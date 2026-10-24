@@ -15,7 +15,7 @@ struct FolderDragHandle: NSViewRepresentable {
     }
     func updateNSView(_ view: FolderDragView, context: Context) {
         view.groups = groups; view.model = model
-        view.toolTip = label
+        view.toolTip = label + ". Or click to choose a destination."
         view.setAccessibilityLabel(label)
         view.setAccessibilityHelp("Drag into a Finder folder or onto the Desktop to move the original files. You can undo the move in Recovery.")
     }
@@ -28,11 +28,25 @@ final class FolderDragView: NSView, NSDraggingSource {
     private var origin: CGPoint?
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { origin = event.locationInWindow }
-    override func mouseUp(with event: NSEvent) { origin = nil }
+    override func mouseUp(with event: NSEvent) {
+        if origin != nil { model?.chooseExportDestination(groups) }
+        origin = nil
+    }
+    override var acceptsFirstResponder: Bool { true }
+    override func accessibilityPerformPress() -> Bool {
+        guard let model, model.phase == .grouped else { return false }
+        model.chooseExportDestination(groups)
+        return true
+    }
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 36 || event.keyCode == 49 { _ = accessibilityPerformPress() }
+        else { super.keyDown(with: event) }
+    }
     override func mouseDragged(with event: NSEvent) {
         guard let origin, hypot(event.locationInWindow.x - origin.x, event.locationInWindow.y - origin.y) > 4,
               let model, let providers = model.beginExport(groups) else { return }
         self.origin = nil
+        model.activeDragSource = self
         let local = convert(event.locationInWindow, from: nil)
         let icon = NSWorkspace.shared.icon(for: .folder)
         let items = providers.enumerated().map { index, provider in
@@ -47,6 +61,7 @@ final class FolderDragView: NSView, NSDraggingSource {
     func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation { .copy }
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         model?.exportDragEnded(accepted: !operation.isEmpty)
+        model?.activeDragSource = nil
     }
 }
 

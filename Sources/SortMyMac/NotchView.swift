@@ -84,10 +84,8 @@ struct NotchView: View {
                             Spacer(minLength: 4)
                             if model.phase == .analyzing {
                                 ProgressView().controlSize(.small)
-                                Button("Cancel", action: model.cancelOrganization).buttonStyle(.bordered)
-                            } else if model.phase == .exporting {
-                                ProgressView().controlSize(.small)
-                            } else if model.phase == .grouped {
+                                Button("Cancel", action: model.cancelOrganization).keyboardShortcut(.cancelAction).buttonStyle(.bordered)
+                            } else if model.phase == .grouped || model.phase == .exporting {
                                 Label("Drag All Folders", systemImage: "hand.draw.fill")
                                     .font(.system(size: 11, weight: .semibold)).foregroundStyle(.black)
                                     .padding(.horizontal, 12).padding(.vertical, 8)
@@ -96,12 +94,12 @@ struct NotchView: View {
                             } else if model.phase == .failed && !model.groups.isEmpty {
                                 Button("Recovery", action: model.showRecovery).buttonStyle(.bordered)
                             } else if !model.files.isEmpty {
-                                Button("Organize", action: model.organize).buttonStyle(.borderedProminent).tint(.mint).foregroundStyle(.black)
+                                Button("Organize", action: model.organize).keyboardShortcut(.return, modifiers: .command).buttonStyle(.borderedProminent).tint(.mint).foregroundStyle(.black)
                                     .disabled(model.isBusy)
                             }
                         }
                         if let warning = model.warnings.first {
-                            Text(warning).font(.system(size: 10)).foregroundStyle(.orange).lineLimit(2).help(model.warnings.joined(separator: "\n"))
+                            Text(warning).font(.system(size: 10)).foregroundStyle(.orange).lineLimit(2).help(model.warnings.joined(separator: "\n")).textSelection(.enabled)
                         }
                     }
                     .padding(.horizontal, 36).padding(.top, model.geometry.restingSize.height + 12)
@@ -116,6 +114,8 @@ struct NotchView: View {
             .frame(width: model.expanded ? model.geometry.expandedSize.width : model.geometry.restingSize.width,
                    height: model.expanded ? model.geometry.expandedSize.height : model.geometry.restingSize.height)
             .clipShape(NotchSurface()).compositingGroup()
+            .onHover { hovering in if hovering && !model.expanded { model.notch?.expand() } }
+            .onTapGesture { if !model.expanded { model.notch?.expand(immediate: true) } }
             .shadow(color: .black.opacity(model.expanded ? 0.55 : 0), radius: 3, y: 1)
             .shadow(color: .black.opacity(model.expanded ? 0.38 : 0), radius: 14, y: 7)
             Spacer(minLength: 0)

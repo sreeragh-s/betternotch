@@ -1,0 +1,35 @@
+# Verification
+
+## Automated checks
+
+`swift test` passes 36 tests across the core and native-app test targets. Coverage includes:
+
+- File intake, deduplication, unsupported items, the 50-file limit, source modifications, and replacement with identical size and timestamp.
+- Notch geometry across screen origins and display widths, with physical cutout and island layouts.
+- Local text, PDF, RTF, and image extraction; bounded image contact sheets and their state references.
+- Clef payloads and response schema, authentication failures, malformed answers, bounded retries, cancellation, and batch limits.
+- Deterministic complete-link grouping, uncertain relationships, folder naming, reassignment, and file conservation during edits.
+- Real temporary-file moves, numbered collisions including maximum-length filenames, verified copy-before-delete transfer behavior, partial failures, journal corruption, restart recovery, and interrupted Undo.
+- Source removal checks inside file coordination, occupied original paths, changed and replaced destinations, and preservation of user-added destination files.
+- Native promise pasteboard writing and delegate fulfillment at an explicit destination, plus retired-session rejection without source mutation.
+
+The copy-before-delete tests force the cross-volume branch using real temporary files. A physical removable drive is still useful for release acceptance.
+
+## UI checks performed
+
+The packaged debug app was opened and inspected through native accessibility and screenshots. Welcome, Cloudflare settings, notch intake, grouped folder cards, completion, and Recovery layouts were checked. The first-launch content installation and fixed sidebar sizing were corrected during this pass.
+
+Using four disposable fixtures, grouping produced two folders. The native destination picker moved all four original files into those folders, and Recovery Undo restored all four and removed the empty destination folders. The results were checked on disk as well as in the UI.
+
+Outgoing native drags were started and canceled with Escape; the sources remained intact and no journal was created. The desktop automation session did not complete a cross-window Finder drop, so that gesture remains a manual acceptance item. Native promise delegate fulfillment is covered by an automated integration test. A successful live Clef call was not performed because account credentials were not configured.
+
+## Manual acceptance before distribution
+
+1. Connect a real Cloudflare account; test PDF, text, RTF, image, and mixed-format topic grouping. Verify cancellation and offline/authentication errors.
+2. Select multiple files in Finder, drag toward the notch, and verify opening and target highlighting. Drop and confirm source locations remain unchanged until export.
+3. Drag one folder and then all remaining folders into a Finder window and onto the Desktop. Verify actual contents, source removal, collision names, and Undo.
+4. Repeat with existing destination folder names, duplicate source basenames, read-only destinations, a removable volume, and a large file.
+5. Change display scaling, attach a monitor, switch Spaces, enter fullscreen, enable Reduce Motion, and exercise VoiceOver and keyboard destination selection.
+6. Interrupt a disposable transfer, reopen Recovery, and verify recovery preserves conflicts rather than overwriting user data.
+
+The release build is ad hoc signed for local use. No Git remote, hosted backend, distribution signing, or notarization is configured.

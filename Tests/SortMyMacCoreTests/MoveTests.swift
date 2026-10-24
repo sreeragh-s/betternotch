@@ -20,7 +20,7 @@ struct ControlledOperations: FileOperations {
         try local.copy(a, b)
         if corruptCopy { try Data("corrupted copy".utf8).write(to: b) }
     }
-    func removeFile(_ url: URL) throws { try local.removeFile(url) }
+    func removeFile(_ url: URL, expected: FileStamp, fingerprint: String) throws { try local.removeFile(url, expected: expected, fingerprint: fingerprint) }
     func removeEmptyDirectory(_ url: URL) throws { try local.removeEmptyDirectory(url) }
 }
 
@@ -180,4 +180,62 @@ func testMover(_ root: URL, operations: any FileOperations = LocalFileOperations
     let added = try writeFixture(record.folder, "user-added.txt", "keep")
     #expect(try await mover.undo(record.id).status == .undone)
     #expect(try String(contentsOf: added.url, encoding: .utf8) == "keep")
+}
+
+@Test func verifiedSourceRemovalRefusesChangedFiles() throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let file = try writeFixture(root, "source.txt", "before")
+    let fs = LocalFileOperations()
+    let stamp = try fs.stamp(file.url)
+    let hash = try fs.digest(file.url)
+    try Data("after change".utf8).write(to: file.url)
+    #expect(throws: (any Error).self) { try fs.removeFile(file.url, expected: stamp, fingerprint: hash) }
+    #expect(try String(contentsOf: file.url, encoding: .utf8) == "after change")
+}
+
+@Test func crashDuringCrossVolumeUndoPreservesVerifiedOriginal() async throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let file = try writeFixture(root, "sources/a.txt")
+    let mover = testMover(root, operations: ControlledOperations(forceCopy: true))
+    let record = try await mover.export(FileGroup(name: "Topic", files: [file]), into: root)
+    // Simulate the checkpoint after restoring a verified copy, before removing the old destination.
+    let fs = LocalFileOperations()
+    try fs.copy(record.items[0].destination, file.url)
+    let journalURL = root.appendingPathComponent("history/moves.json")
+    var journal = try JSONDecoder().decode(MoveJournal.self, from: Data(contentsOf: journalURL))
+    journal.records[0].status = .undoing
+    journal.records[0].items[0].stage = .restoreCopied
+    journal.records[0].items[0].restoredStamp = try fs.stamp(file.url)
+    try JSONEncoder().encode(journal).write(to: journalURL, options: .atomic)
+    let undo = try await testMover(root).undo(record.id)
+    #expect(undo.status == .undone)
+    #expect(try String(contentsOf: file.url, encoding: .utf8) == "original contents")
+    #expect(!fs.exists(record.items[0].destination))
+}
+
+@Test func replacedDestinationWithIdenticalContentIsKeptForReview() async throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let file = try writeFixture(root, "sources/a.txt")
+    let mover = testMover(root)
+    let record = try await mover.export(FileGroup(name: "Topic", files: [file]), into: root)
+    let data = try Data(contentsOf: record.items[0].destination)
+    try data.write(to: record.items[0].destination, options: .atomic)
+    let undo = try await mover.undo(record.id)
+    #expect(undo.status == .attention)
+    #expect(FileManager.default.fileExists(atPath: record.items[0].destination.path))
+}
+
+@Test func duplicateMaximumLengthFilenamesStillFitTheFilesystem() async throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let name = String(repeating: "a", count: 251) + ".txt"
+    let a = try writeFixture(root, "one/" + name)
+    let b = try writeFixture(root, "two/" + name)
+    let record = try await testMover(root).export(FileGroup(name: "Topic", files: [a, b]), into: root)
+    #expect(record.status == .completed)
+    #expect(record.items[1].destination.lastPathComponent.utf8.count <= 255)
+    #expect(record.items[1].destination.pathExtension == "txt")
 }

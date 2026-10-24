@@ -18,7 +18,7 @@ final class SettingsWindow: NSWindowController, NSWindowDelegate {
     }
     required init?(coder: NSCoder) { nil }
     func show() {
-        if window?.contentView == nil { window?.contentView = NSHostingView(rootView: SettingsView(model: model, settings: model.settings)) }
+        if !(window?.contentView is NSHostingView<SettingsView>) { window?.contentView = NSHostingView(rootView: SettingsView(model: model, settings: model.settings)) }
         NSApp.activate(ignoringOtherApps: true)
         window?.center(); window?.makeKeyAndOrderFront(nil)
     }
@@ -37,7 +37,7 @@ struct SettingsView: View {
             List(selection: $model.settingsPage) {
                 ForEach(pages, id: \.0) { title, symbol in Label(title, systemImage: symbol).tag(title).padding(.vertical, 4) }
             }
-            .listStyle(.sidebar).navigationSplitViewColumnWidth(190)
+            .listStyle(.sidebar).navigationSplitViewColumnWidth(190).frame(minWidth: 190)
             .toolbar(removing: .sidebarToggle)
         } detail: {
             Group {

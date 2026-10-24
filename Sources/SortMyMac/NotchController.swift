@@ -40,7 +40,7 @@ final class NotchHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? {
         // Shadow margins should never catch a click intended for the application below.
-        if point.x < 28 || point.x > bounds.width - 28 || point.y < 28 { return nil }
+        if bounds.height > 100 && (point.x < 28 || point.x > bounds.width - 28 || point.y < 28) { return nil }
         return super.hitTest(point)
     }
 }
@@ -65,6 +65,7 @@ final class NotchController {
         panel.isOpaque = false
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
+        panel.acceptsMouseMovedEvents = true
         panel.isReleasedWhenClosed = false
         panel.isFloatingPanel = true
         panel.level = .statusBar
@@ -82,7 +83,16 @@ final class NotchController {
             return true
         }
         panel.contentView = host
-        panel.dismiss = { [weak self] in self?.collapse(force: true) }
+        panel.dismiss = { [weak self] in
+            if self?.model.phase == .analyzing { self?.model.cancelOrganization() }
+            else { self?.collapse() }
+        }
+        model.$status.removeDuplicates().debounce(for: .milliseconds(700), scheduler: RunLoop.main)
+            .sink { [weak self] text in
+                guard let self, self.model.expanded else { return }
+                NSAccessibility.post(element: self.panel, notification: .announcementRequested,
+                                     userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.medium.rawValue])
+            }.store(in: &subscriptions)
         rebuild()
         model.settings.$displayID.dropFirst().sink { [weak self] _ in
             Task { @MainActor in self?.rebuild() }
@@ -179,6 +189,9 @@ final class NotchController {
         opening?.cancel(); opening = nil
         closing?.cancel(); closing = nil
         guard model.expanded else { return }
+        #if DEBUG
+        if model.pinOpenForSmokeTest && !force { return }
+        #endif
         if !force && (model.isBusy || model.dropTargeted) { return }
         reveal?.cancel()
         withAnimation(motion(.easeOut(duration: 0.1))) { model.contentVisible = false }

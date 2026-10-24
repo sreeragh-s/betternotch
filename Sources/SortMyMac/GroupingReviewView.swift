@@ -92,7 +92,7 @@ struct FolderCard<Files: View>: View {
             HStack(spacing: 8) {
                 Image(systemName: "folder.fill").font(.system(size: 24)).foregroundStyle(.mint)
                     .frame(width: 32, height: 32)
-                    .overlay { if editing { FolderDragHandle(groups: [group], model: model, label: "Drag \(group.name) folder to Finder") } }
+                    .overlay { if editing || model.phase == .exporting { FolderDragHandle(groups: [group], model: model, label: "Drag \(group.name) folder to Finder") } }
                 VStack(alignment: .leading, spacing: 3) {
                     if editing {
                         TextField("Folder name", text: $name).textFieldStyle(.plain).font(.system(size: 12, weight: .semibold))

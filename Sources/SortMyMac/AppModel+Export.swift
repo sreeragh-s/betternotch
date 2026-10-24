@@ -3,6 +3,33 @@ import SortMyMacCore
 import UniformTypeIdentifiers
 
 extension AppModel {
+    func chooseExportDestination(_ selection: [FileGroup]) {
+        guard phase == .grouped, !selection.isEmpty else { return }
+        let picker = NSOpenPanel()
+        picker.title = "Move organized folders"
+        picker.message = "Choose where to move the original files. You can undo the move in Recovery."
+        picker.prompt = "Move here"
+        picker.canChooseFiles = false
+        picker.canChooseDirectories = true
+        picker.canCreateDirectories = true
+        picker.allowsMultipleSelection = false
+        NSApp.activate(ignoringOtherApps: true)
+        picker.begin { [weak self] response in
+            guard response == .OK, let self, let parent = picker.url,
+                  self.beginExport(selection) != nil, let session = self.exportSessionID else { return }
+            let snapshots = self.activePromises.map(\.group)
+            Task {
+                for group in snapshots {
+                    self.exportStarted.insert(group.id)
+                    do {
+                        let record = try await self.moves.export(group, into: parent)
+                        self.exportFinished(group.id, sessionID: session, result: .success(record))
+                    } catch { self.exportFinished(group.id, sessionID: session, result: .failure(error)) }
+                }
+            }
+        }
+    }
+
     func beginExport(_ selection: [FileGroup]) -> [NSFilePromiseProvider]? {
         guard phase == .grouped, !selection.isEmpty, exportSessionID == nil else { return nil }
         let selected = selection.filter { candidate in groups.contains(where: { $0.id == candidate.id }) }

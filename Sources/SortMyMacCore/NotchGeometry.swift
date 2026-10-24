@@ -15,7 +15,7 @@ public struct NotchGeometry: Equatable, Sendable {
         let width = hasCutout && leftWidth != nil && rightWidth != nil && reported > 0
             ? reported : (hasCutout ? 190 : min(230, max(170, screen.width * 0.125)))
         restingSize = CGSize(width: width, height: max(30, safeTop))
-        expandedSize = CGSize(width: min(620, max(280, screen.width - 64)), height: 350)
+        expandedSize = CGSize(width: min(620, max(180, screen.width - 64)), height: 350)
     }
 
     public var restingFrame: CGRect {

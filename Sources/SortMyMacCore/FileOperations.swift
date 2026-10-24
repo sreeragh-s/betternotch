@@ -19,7 +19,7 @@ public protocol FileOperations: Sendable {
     func sameVolume(_ source: URL, _ destinationParent: URL) throws -> Bool
     func move(_ source: URL, _ destination: URL) throws
     func copy(_ source: URL, _ destination: URL) throws
-    func removeFile(_ url: URL) throws
+    func removeFile(_ url: URL, expected: FileStamp, fingerprint: String) throws
     func removeEmptyDirectory(_ url: URL) throws
 }
 
@@ -79,7 +79,7 @@ public struct LocalFileOperations: FileOperations {
         }
         if let error = coordinationError ?? operationError { throw error }
     }
-    public func removeFile(_ url: URL) throws {
+    public func removeFile(_ url: URL, expected: FileStamp, fingerprint: String) throws {
         let values = try url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
         guard values.isRegularFile == true, values.isSymbolicLink != true else {
             throw SortError.message("Refusing to remove an unexpected item at \(url.lastPathComponent).")
@@ -88,7 +88,12 @@ public struct LocalFileOperations: FileOperations {
         var coordinationError: NSError?
         var operationError: (any Error)?
         coordinator.coordinate(writingItemAt: url, options: .forDeleting, error: &coordinationError) { coordinated in
-            do { try FileManager.default.removeItem(at: coordinated) } catch { operationError = error }
+            do {
+                guard try stamp(coordinated) == expected, try digest(coordinated) == fingerprint else {
+                    throw SortError.message("The file changed before source removal. Both copies were preserved.")
+                }
+                try FileManager.default.removeItem(at: coordinated)
+            } catch { operationError = error }
         }
         if let error = coordinationError ?? operationError { throw error }
     }

@@ -8,6 +8,7 @@ let package = Package(
     targets: [
         .target(name: "SortMyMacCore"),
         .executableTarget(name: "SortMyMac", dependencies: ["SortMyMacCore"]),
-        .testTarget(name: "SortMyMacCoreTests", dependencies: ["SortMyMacCore"])
+        .testTarget(name: "SortMyMacCoreTests", dependencies: ["SortMyMacCore"]),
+        .testTarget(name: "SortMyMacAppTests", dependencies: ["SortMyMac", "SortMyMacCore"])
     ]
 )

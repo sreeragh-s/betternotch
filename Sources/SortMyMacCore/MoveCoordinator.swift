@@ -51,7 +51,7 @@ public actor MoveCoordinator: FolderExporting {
             var candidate = file.name
             var counter = 2
             while used.contains(candidate.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))) {
-                candidate = Self.numbered(file.name, number: counter); counter += 1
+                candidate = try Self.numbered(file.name, number: counter); counter += 1
             }
             used.insert(candidate.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX")))
             record.items.append(MoveItem(file: file, destination: target.appendingPathComponent(candidate),
@@ -117,7 +117,7 @@ public actor MoveCoordinator: FolderExporting {
                       try fs.stamp(item.destination) == destinationStamp else {
                     throw SortError.message("Copy verification failed for \(item.file.name). The source was kept.")
                 }
-                try fs.removeFile(item.file.url)
+                try fs.removeFile(item.file.url, expected: item.originalStamp, fingerprint: item.fingerprint)
                 journal.records[r].items[i].stage = .moved
                 try persist()
             }
@@ -144,6 +144,7 @@ public actor MoveCoordinator: FolderExporting {
         }
         let allRestored = journal.records[r].items.allSatisfy { $0.stage == .restored }
         journal.records[r].status = allRestored ? .undone : .attention
+        journal.records[r].error = allRestored ? nil : "Some items need review. Resolve the listed conflicts, then retry Undo."
         if allRestored, let stamp = journal.records[r].folderStamp,
            let current = try? fs.stamp(journal.records[r].folder), current.identity == stamp.identity {
             // rmdir refuses nonempty directories; never recursively delete a destination folder.
@@ -179,7 +180,7 @@ public actor MoveCoordinator: FolderExporting {
                   try fs.digest(item.file.url) == item.fingerprint else {
                 throw SortError.message("An item already occupies the original path. Nothing was overwritten.")
             }
-            try fs.removeFile(item.destination)
+            try fs.removeFile(item.destination, expected: stamp, fingerprint: item.fingerprint)
             journal.records[r].items[i].stage = .restored; return
         }
         let parent = item.file.url.deletingLastPathComponent()
@@ -200,7 +201,7 @@ public actor MoveCoordinator: FolderExporting {
                   try fs.stamp(item.destination) == stamp else {
                 throw SortError.message("Restored copy verification failed. Both copies were preserved.")
             }
-            try fs.removeFile(item.destination)
+            try fs.removeFile(item.destination, expected: stamp, fingerprint: item.fingerprint)
         }
         journal.records[r].items[i].stage = .restored
     }
@@ -228,10 +229,13 @@ public actor MoveCoordinator: FolderExporting {
         try handle.synchronize(); try handle.close()
     }
 
-    private static func numbered(_ name: String, number: Int) -> String {
+    private static func numbered(_ name: String, number: Int) throws -> String {
         let url = URL(fileURLWithPath: name)
         let ext = url.pathExtension
-        let stem = ext.isEmpty ? name : url.deletingPathExtension().lastPathComponent
-        return ext.isEmpty ? "\(stem) \(number)" : "\(stem) \(number).\(ext)"
+        var stem = ext.isEmpty ? name : url.deletingPathExtension().lastPathComponent
+        let suffix = ext.isEmpty ? " \(number)" : " \(number).\(ext)"
+        guard suffix.utf8.count < 250 else { throw SortError.message("A duplicate filename has an unusually long extension. Shorten its name in Finder before moving it.") }
+        while stem.utf8.count + suffix.utf8.count > 255 { stem.removeLast() }
+        return stem + suffix
     }
 }

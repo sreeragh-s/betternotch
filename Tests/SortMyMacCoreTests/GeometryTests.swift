@@ -11,7 +11,7 @@ import Testing
 }
 
 @Test func islandFitsSmallAndLargeDisplays() {
-    for width in [640.0, 1920, 5120] {
+    for width in [320.0, 640, 1920, 5120] {
         let g = NotchGeometry(screen: CGRect(x: 0, y: 0, width: width, height: 1080), safeTop: 0)
         #expect(!g.hasCutout)
         #expect(g.restingSize.width >= 170 && g.restingSize.width <= 230)

@@ -6,9 +6,14 @@ import SortMyMacCore
 final class AppModel: ObservableObject {
     static let shared = AppModel()
     let settings = SettingsStore()
-    let moves = MoveCoordinator(journalURL: MoveCoordinator.defaultJournalURL)
+    #if DEBUG
+    var pinOpenForSmokeTest = false
+    var fixtureGroupingService: (any GroupingService)?
+    #endif
+    var moves = MoveCoordinator(journalURL: MoveCoordinator.defaultJournalURL)
     @Published var moveRecords: [MoveRecord] = []
     @Published var settingsPage = "Welcome"
+    var activeDragSource: FolderDragView?
     var activePromises: [FolderPromise] = []
     var pendingExports: Set<UUID> = []
     var exportStarted: Set<UUID> = []
@@ -79,12 +84,24 @@ final class AppModel: ObservableObject {
         guard !isBusy, !files.isEmpty else { return }
         let credentials = CloudflareCredentials(accountID: settings.accountID.trimmingCharacters(in: .whitespacesAndNewlines),
                                                 token: settings.token.trimmingCharacters(in: .whitespacesAndNewlines))
+        let service: any GroupingService
+        #if DEBUG
+        if let fixtureGroupingService {
+            service = fixtureGroupingService
+        } else {
+            do { try credentials.validate() }
+            catch { warnings = [error.localizedDescription]; return }
+            settings.saveToken()
+            service = ClefGroupingService(client: ClefClient(credentials: credentials))
+        }
+        #else
         do { try credentials.validate() }
         catch { warnings = [error.localizedDescription]; return }
         settings.saveToken()
+        service = ClefGroupingService(client: ClefClient(credentials: credentials))
+        #endif
         phase = .analyzing; warnings = []; groups = []
         progressCompleted = 0; progressTotal = 0
-        let service = ClefGroupingService(client: ClefClient(credentials: credentials))
         let selected = files
         organizationTask = Task { [weak self] in
             do {

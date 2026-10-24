@@ -44,6 +44,7 @@ public final class URLSessionTransport: HTTPTransport {
         configuration.httpCookieStorage = nil
         session = URLSession(configuration: configuration, delegate: NoRedirectDelegate(), delegateQueue: nil)
     }
+    deinit { session.invalidateAndCancel() }
     public func send(_ request: URLRequest) async throws -> HTTPResponse {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw SortError.message("Cloudflare returned an invalid response.") }
