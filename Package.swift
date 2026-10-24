@@ -10,6 +10,7 @@ let package = Package(
         .systemLibrary(name: "CSQLite"),
         .target(name: "SortMyMacCore", dependencies: ["CSQLite", "ZIPFoundation"]),
         .executableTarget(name: "SortMyMac", dependencies: ["SortMyMacCore"]),
+        .executableTarget(name: "SortMyMacCodexBridge", dependencies: ["SortMyMacCore"]),
         .testTarget(name: "SortMyMacCoreTests", dependencies: ["SortMyMacCore"]),
         .testTarget(name: "SortMyMacAppTests", dependencies: ["SortMyMac", "SortMyMacCore"])
     ]
