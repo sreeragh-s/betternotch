@@ -31,6 +31,8 @@ Requests use your account's Workers AI access and billing. No service credential
 
 The menu bar also exposes Settings, Recovery, and Quit. `⌘Return` organizes while the notch has keyboard focus. Escape cancels analysis or closes an idle panel; Escape during a native drag cancels that drag. Hover never activates the app.
 
+The tray, folder cards, and Settings follow macOS light/dark appearance and accent color automatically. The collapsed island and physical camera cutout stay black.
+
 ## Privacy and grouping
 
 Choosing Organize sends filenames, types, sizes, dates, up to 1,200 characters of extracted text per file, and small image previews to [Cloudflare Clef](https://developers.cloudflare.com/workers-ai/models/clef/). The app does not send absolute source paths. Previews are packed into bounded contact sheets with explicit cell coordinates. No data leaves the Mac merely because files were added to the tray.
@@ -57,5 +59,7 @@ open -n build/SortMyMac.app --args --smoke-test "/tmp/SortMyMac-QA-$(uuidgen)"
 ```
 
 Debug-only smoke mode creates four disposable text files and isolated recovery history under a fresh temporary directory. It supplies deterministic test grouping without contacting Cloudflare and keeps the panel open for UI automation. Release builds contain no fixture service. Use its `destination/` folder to test export, cancel, and Undo.
+
+Add `--smoke-appearance light` or `--smoke-appearance dark` to preview either appearance within the debug app, without changing macOS settings. Omit the option to follow the system.
 
 See [UI practices](docs/UI-Practices.md) and [verification notes](docs/Verification.md).

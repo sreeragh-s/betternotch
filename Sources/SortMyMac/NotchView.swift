@@ -36,8 +36,8 @@ struct CircleControl: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white.opacity(0.75)).frame(width: 30, height: 30)
-                .background(.white.opacity(hover ? 0.14 : 0.04), in: Circle())
+                .foregroundStyle(.secondary).frame(width: 30, height: 30)
+                .background(Color.primary.opacity(hover ? 0.12 : 0.05), in: Circle())
         }
         .buttonStyle(SoftPress()).onHover { hover = $0 }.help(label).accessibilityLabel(label)
     }
@@ -45,15 +45,22 @@ struct CircleControl: View {
 
 struct NotchView: View {
     @ObservedObject var model: AppModel
+    @Environment(\.colorScheme) private var colorScheme
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                NotchSurface().fill(.black)
-                    .overlay(NotchSurface().stroke(.white.opacity(model.expanded ? 0.10 : 0), lineWidth: 1))
+                NotchSurface().fill(model.expanded ? Color(nsColor: .windowBackgroundColor) : .black)
+                    .overlay(NotchSurface().stroke(Color.primary.opacity(model.expanded ? 0.10 : 0), lineWidth: 1))
+                // Keep the physical camera area black while the expanded content follows macOS.
+                if model.expanded && model.geometry.hasCutout {
+                    NotchSurface().fill(.black)
+                        .frame(width: model.geometry.restingSize.width, height: model.geometry.restingSize.height)
+                        .accessibilityHidden(true)
+                }
                 if model.contentVisible {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 8) {
-                            Image(systemName: "square.stack.3d.up.fill").foregroundStyle(.mint)
+                            Image(systemName: "square.stack.3d.up.fill").foregroundStyle(Color.accentColor)
                             Text("SortMyMac").font(.system(size: 13, weight: .semibold))
                             Spacer()
                             CircleControl(symbol: "gearshape", label: "Settings", action: model.showSettings)
@@ -71,30 +78,31 @@ struct NotchView: View {
                             GroupingReviewView(model: model)
                         } else if model.phase == .completed {
                             VStack(spacing: 12) {
-                                Image(systemName: "checkmark.seal.fill").font(.system(size: 36)).foregroundStyle(.mint)
+                                Image(systemName: "checkmark.seal.fill").font(.system(size: 36)).foregroundStyle(Color.accentColor)
                                 Text("Everything in its place.").font(.system(size: 22, weight: .semibold))
                                 HStack {
-                                    Button("Organize more", action: model.chooseFiles).buttonStyle(.borderedProminent).tint(.mint).foregroundStyle(.black)
+                                    Button("Organize more", action: model.chooseFiles).buttonStyle(.borderedProminent)
                                     Button("Undo move", action: model.showRecovery).buttonStyle(.bordered)
                                 }
                             }.frame(maxWidth: .infinity).frame(height: 198)
                         } else { intake }
                         HStack {
-                            Text(model.status).font(.system(size: 11)).foregroundStyle(.white.opacity(0.5)).lineLimit(2)
+                            Text(model.status).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2)
                             Spacer(minLength: 4)
                             if model.phase == .analyzing {
                                 ProgressView().controlSize(.small)
                                 Button("Cancel", action: model.cancelOrganization).keyboardShortcut(.cancelAction).buttonStyle(.bordered)
                             } else if model.phase == .grouped || model.phase == .exporting {
                                 Label("Drag All Folders", systemImage: "hand.draw.fill")
-                                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(.black)
+                                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(.primary)
                                     .padding(.horizontal, 12).padding(.vertical, 8)
-                                    .background(.mint, in: Capsule())
+                                    .background(Color.accentColor.opacity(0.16), in: Capsule())
+                                    .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.5), lineWidth: 1))
                                     .overlay { FolderDragHandle(groups: model.groups, model: model, label: "Drag all folders to Finder") }
                             } else if model.phase == .failed && !model.groups.isEmpty {
                                 Button("Recovery", action: model.showRecovery).buttonStyle(.bordered)
                             } else if !model.files.isEmpty {
-                                Button("Organize", action: model.organize).keyboardShortcut(.return, modifiers: .command).buttonStyle(.borderedProminent).tint(.mint).foregroundStyle(.black)
+                                Button("Organize", action: model.organize).keyboardShortcut(.return, modifiers: .command).buttonStyle(.borderedProminent)
                                     .disabled(model.isBusy)
                             }
                         }
@@ -106,9 +114,9 @@ struct NotchView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
                 } else if !model.geometry.hasCutout && !model.expanded {
                     HStack(spacing: 6) {
-                        Image(systemName: "square.stack.3d.up.fill").foregroundStyle(.mint)
+                        Image(systemName: "square.stack.3d.up.fill").foregroundStyle(Color.accentColor)
                         Text("SortMyMac").font(.system(size: 10, weight: .medium))
-                    }.padding(.top, 8)
+                    }.foregroundStyle(.white).padding(.top, 8)
                 }
             }
             .frame(width: model.expanded ? model.geometry.expandedSize.width : model.geometry.restingSize.width,
@@ -116,12 +124,12 @@ struct NotchView: View {
             .clipShape(NotchSurface()).compositingGroup()
             .onHover { hovering in if hovering && !model.expanded { model.notch?.expand() } }
             .onTapGesture { if !model.expanded { model.notch?.expand(immediate: true) } }
-            .shadow(color: .black.opacity(model.expanded ? 0.55 : 0), radius: 3, y: 1)
-            .shadow(color: .black.opacity(model.expanded ? 0.38 : 0), radius: 14, y: 7)
+            .shadow(color: .black.opacity(model.expanded ? (colorScheme == .dark ? 0.55 : 0.18) : 0), radius: 3, y: 1)
+            .shadow(color: .black.opacity(model.expanded ? (colorScheme == .dark ? 0.38 : 0.18) : 0), radius: 14, y: 7)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .foregroundStyle(.white).environment(\.colorScheme, .dark)
+        .foregroundStyle(.primary)
     }
     private var intake: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -138,10 +146,10 @@ struct NotchView: View {
                 if model.files.isEmpty {
                     Button(action: model.chooseFiles) {
                         VStack(spacing: 9) {
-                            Image(systemName: "tray.and.arrow.down").font(.system(size: 25)).foregroundStyle(.mint)
+                            Image(systemName: "tray.and.arrow.down").font(.system(size: 25)).foregroundStyle(Color.accentColor)
                             Text(model.dropTargeted ? "Drop to Organize" : "Drop files here or click to choose")
                                 .font(.system(size: 13, weight: .medium))
-                            Text("Group by topic. Move folders anywhere.").font(.system(size: 11)).foregroundStyle(.white.opacity(0.45))
+                            Text("Group by topic. Move folders anywhere.").font(.system(size: 11)).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity, maxHeight: .infinity).contentShape(Rectangle())
                     }.buttonStyle(.plain).accessibilityLabel("Choose files to organize")
                 } else {
@@ -163,8 +171,8 @@ struct NotchView: View {
                 }
             }
             .frame(height: 112)
-            .background(.mint.opacity(model.dropTargeted ? 0.12 : 0.025), in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(model.dropTargeted ? .mint : .white.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [5, 5])))
+            .background(Color.accentColor.opacity(model.dropTargeted ? 0.14 : 0.04), in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(model.dropTargeted ? Color.accentColor : Color.primary.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [5, 5])))
         }
     }
 

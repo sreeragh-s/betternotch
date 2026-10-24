@@ -13,6 +13,15 @@ enum SmokeTestSupport {
         guard try LocalFileOperations().reserveDirectory(canonical) else {
             throw SortError.message("Smoke test directory already exists. Choose a new path.")
         }
+        // App-local appearance previews never change the user's macOS preferences.
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "--smoke-appearance"), arguments.indices.contains(index + 1) {
+            switch arguments[index + 1] {
+            case "light": NSApp.appearance = NSAppearance(named: .aqua)
+            case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+            default: break
+            }
+        }
         let sources = canonical.appendingPathComponent("sources", isDirectory: true)
         let destination = canonical.appendingPathComponent("destination", isDirectory: true)
         try FileManager.default.createDirectory(at: sources, withIntermediateDirectories: true)

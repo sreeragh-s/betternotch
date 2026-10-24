@@ -19,7 +19,7 @@ struct RecoveryView: View {
                 Section {
                     HStack {
                         Image(systemName: record.status == .undone ? "arrow.uturn.backward.circle" : (record.status.needsAttention ? "exclamationmark.triangle" : "folder.fill"))
-                            .foregroundStyle(record.status.needsAttention ? Color.orange : .mint)
+                            .foregroundStyle(record.status.needsAttention ? Color.orange : Color.accentColor)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(record.name).font(.headline)
                             Text("\(record.items.count) files · \(record.status.rawValue.capitalized)").font(.caption).foregroundStyle(.secondary)

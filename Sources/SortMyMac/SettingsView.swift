@@ -49,15 +49,14 @@ struct SettingsView: View {
                 }
             }.navigationTitle(model.settingsPage)
         }
-        .tint(.mint)
         .frame(minWidth: 760, minHeight: 570)
     }
 
     private var welcome: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Image(systemName: "square.stack.3d.up.fill").font(.system(size: 42)).foregroundStyle(.mint)
-                    .frame(width: 76, height: 76).background(.mint.opacity(0.12), in: RoundedRectangle(cornerRadius: 22))
+                Image(systemName: "square.stack.3d.up.fill").font(.system(size: 42)).foregroundStyle(Color.accentColor)
+                    .frame(width: 76, height: 76).background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 22))
                 VStack(alignment: .leading, spacing: 8) {
                     Text("A little order.\nRight at the notch.").font(.system(size: 32, weight: .semibold))
                     Text("Bring related files together, then put them where they belong.")
@@ -85,7 +84,7 @@ struct SettingsView: View {
     private func step(_ number: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Text(number).font(.system(size: 11, weight: .bold, design: .rounded))
-                .frame(width: 24, height: 24).background(.mint.opacity(0.12), in: Circle()).foregroundStyle(.mint)
+                .frame(width: 24, height: 24).background(Color.accentColor.opacity(0.12), in: Circle()).foregroundStyle(Color.accentColor)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 13, weight: .semibold))
                 Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
@@ -111,7 +110,7 @@ struct SettingsView: View {
                 Toggle("Haptic feedback on open", isOn: $settings.haptics)
             }
             Section {
-                Text("The notch follows macOS Reduce Motion. On displays without a camera cutout, SortMyMac appears as a small island at the top center.").font(.caption).foregroundStyle(.secondary)
+                Text("Appearance and accent color follow your macOS settings automatically. The camera cutout stays black. The notch also follows macOS Reduce Motion. On displays without a camera cutout, SortMyMac appears as a small island at the top center.").font(.caption).foregroundStyle(.secondary)
                 Button("Show notch") { model.showNotch() }
             }
         }.formStyle(.grouped)

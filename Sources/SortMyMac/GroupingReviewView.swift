@@ -18,9 +18,9 @@ struct GroupingReviewView: View {
                         ForEach(remaining.prefix(8)) { file in
                             fileIcon(file, size: 25)
                         }
-                        if remaining.count > 8 { Text("+\(remaining.count - 8)").font(.caption).foregroundStyle(.white.opacity(0.5)) }
+                        if remaining.count > 8 { Text("+\(remaining.count - 8)").font(.caption).foregroundStyle(.secondary) }
                         Spacer()
-                        Text("Finding connections").font(.system(size: 10)).foregroundStyle(.white.opacity(0.4))
+                        Text("Finding connections").font(.system(size: 10)).foregroundStyle(.secondary)
                     }.padding(8)
                 }
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
@@ -60,9 +60,9 @@ struct GroupingReviewView: View {
                 }
                 if model.groups.isEmpty {
                     VStack(spacing: 10) {
-                        Image(systemName: "sparkle.magnifyingglass").font(.system(size: 25)).foregroundStyle(.mint)
+                        Image(systemName: "sparkle.magnifyingglass").font(.system(size: 25)).foregroundStyle(Color.accentColor)
                         Text("Looking for what belongs together").font(.system(size: 12, weight: .medium))
-                        Text("Your originals are still right where you left them.").font(.system(size: 10)).foregroundStyle(.white.opacity(0.45))
+                        Text("Your originals are still right where you left them.").font(.system(size: 10)).foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity).padding(.vertical, 18)
                 }
             }.padding(2)
@@ -90,7 +90,7 @@ struct FolderCard<Files: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: "folder.fill").font(.system(size: 24)).foregroundStyle(.mint)
+                Image(systemName: "folder.fill").font(.system(size: 24)).foregroundStyle(Color.accentColor)
                     .frame(width: 32, height: 32)
                     .overlay { if editing || model.phase == .exporting { FolderDragHandle(groups: [group], model: model, label: "Drag \(group.name) folder to Finder") } }
                 VStack(alignment: .leading, spacing: 3) {
@@ -102,7 +102,7 @@ struct FolderCard<Files: View>: View {
                             .accessibilityLabel("Name for \(group.name)")
                     } else { Text(group.name).font(.system(size: 12, weight: .semibold)).lineLimit(1) }
                     Text("\(group.files.count) \(group.files.count == 1 ? "file" : "files")")
-                        .font(.system(size: 10)).foregroundStyle(.white.opacity(0.45))
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
             }
@@ -110,8 +110,8 @@ struct FolderCard<Files: View>: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(hovered ? 0.09 : 0.045), in: RoundedRectangle(cornerRadius: 13))
-        .overlay(RoundedRectangle(cornerRadius: 13).stroke(.mint.opacity(hovered ? 0.35 : 0.1), lineWidth: 1))
+        .background(Color.primary.opacity(hovered ? 0.09 : 0.045), in: RoundedRectangle(cornerRadius: 13))
+        .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.accentColor.opacity(hovered ? 0.35 : 0.1), lineWidth: 1))
         .onHover { hovered = $0 }
         .onAppear { name = group.name }
         .onChange(of: group.name) { _, value in if name != value { name = value } }

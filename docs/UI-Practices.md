@@ -3,14 +3,15 @@
 ## Surface and geometry
 
 - AppKit owns window placement, drag sessions, first-click handling, and the menu bar. SwiftUI owns content and transitions.
-- A transparent, borderless, nonactivating panel blends a pure black surface into the physical camera cutout. Read safe-area and auxiliary menu-bar geometry from NSScreen; never infer hardware geometry from a model name.
+- A transparent, borderless, nonactivating panel keeps the collapsed island and physical camera cutout black; the expanded tray uses the native window background for light and dark appearance. Read safe-area and auxiliary menu-bar geometry from NSScreen; never infer hardware geometry from a model name.
 - Use a top-center island on displays without a cutout. Recompute frames on display changes and wake. Leave shadow padding outside the visible surface.
-- Upper corners flare outward with a concave curve; lower corners are continuously rounded. A faint white outline and two shadow layers separate the expanded surface from light wallpaper.
+- Upper corners flare outward with a concave curve; lower corners are continuously rounded. A faint semantic outline and two shadow layers separate the expanded surface from light wallpaper.
 - Keep controls below the camera cutout and menu bar; empty transparent margins do not intercept clicks.
 
 ## Layout and interaction
 
-- System typography, SF Symbols, native Finder file icons, one-line truncated filenames, full-name tooltips, monospaced progress counts, and a restrained mint accent.
+- System typography, SF Symbols, native Finder file icons, one-line truncated filenames, full-name tooltips, monospaced progress counts, and the macOS accent color.
+- Follow macOS appearance and accent changes automatically, without an app override. Use primary and secondary text, native button styling, and subtle accent fills so every system accent remains readable.
 - Compact controls use circular hover backgrounds and a slight spring compression on press. Click targets remain comfortably larger than their symbols.
 - The empty tray is a rounded dashed target. Drag targeting increases border, fill, and label contrast. Loaded files form a horizontal tray; results become folder cards.
 - A native multi-file open panel complements Finder drag and drop. Context menus expose secondary actions; primary actions stay visible.
