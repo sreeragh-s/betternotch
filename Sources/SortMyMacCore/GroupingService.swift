@@ -21,7 +21,6 @@ public struct ClefGroupingService: GroupingService {
         self.client = client; self.extractor = extractor
     }
     public func group(_ files: [FileDescriptor], progress: @escaping @Sendable (GroupingProgress) async -> Void) async throws -> GroupingPlan {
-        try client.credentials.validate()
         guard !files.isEmpty, files.count <= FileIntake.limit else { throw SortError.message("Choose between 1 and 50 files.") }
         let sorted = files.sorted { $0.url.path < $1.url.path }
         var evidence: [FileEvidence] = []
@@ -37,6 +36,7 @@ public struct ClefGroupingService: GroupingService {
             let message = batches.isEmpty ? "Screenshots gathered locally." : "Screenshots gathered · finding topics in remaining files…"
             await progress(GroupingProgress(message, plan: localPlan))
         }
+        if !batches.isEmpty { try client.credentials.validate() }
         for (index, batch) in batches.enumerated() {
             try Task.checkCancellation()
             await progress(GroupingProgress("Finding connections · batch \(index + 1) of \(batches.count)", completed: index, total: batches.count))

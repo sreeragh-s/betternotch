@@ -89,15 +89,9 @@ final class AppModel: ObservableObject {
         if let fixtureGroupingService {
             service = fixtureGroupingService
         } else {
-            do { try credentials.validate() }
-            catch { warnings = [error.localizedDescription]; return }
-            settings.saveToken()
             service = ClefGroupingService(client: ClefClient(credentials: credentials))
         }
         #else
-        do { try credentials.validate() }
-        catch { warnings = [error.localizedDescription]; return }
-        settings.saveToken()
         service = ClefGroupingService(client: ClefClient(credentials: credentials))
         #endif
         phase = .analyzing; warnings = []; groups = []
