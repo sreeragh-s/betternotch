@@ -107,6 +107,26 @@ final class AppModel: ObservableObject {
         if let plan = progress.plan { groups = plan.groups }
     }
 
+    func renameDraft(_ id: UUID, to name: String) {
+        guard phase == .grouped, let index = groups.firstIndex(where: { $0.id == id }) else { return }
+        groups[index].name = String(name.prefix(80))
+    }
+    func rename(_ id: UUID, to name: String) {
+        guard phase == .grouped else { return }
+        var plan = GroupingPlan(groups: groups)
+        plan.rename(id, to: name); groups = plan.groups
+    }
+    func reassign(_ fileID: UUID, to groupID: UUID) {
+        guard phase == .grouped else { return }
+        var plan = GroupingPlan(groups: groups)
+        plan.reassign(fileID, to: groupID); groups = plan.groups
+    }
+    func separate(_ fileID: UUID) {
+        guard phase == .grouped else { return }
+        var plan = GroupingPlan(groups: groups)
+        plan.separate(fileID); groups = plan.groups
+    }
+
     func cancelOrganization() { organizationTask?.cancel() }
 
     func showSettings() {

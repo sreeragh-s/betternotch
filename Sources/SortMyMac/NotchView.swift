@@ -51,7 +51,7 @@ struct NotchView: View {
                 NotchSurface().fill(.black)
                     .overlay(NotchSurface().stroke(.white.opacity(model.expanded ? 0.10 : 0), lineWidth: 1))
                 if model.contentVisible {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 8) {
                             Image(systemName: "square.stack.3d.up.fill").foregroundStyle(.mint)
                             Text("SortMyMac").font(.system(size: 13, weight: .semibold))
@@ -59,13 +59,25 @@ struct NotchView: View {
                             CircleControl(symbol: "gearshape", label: "Settings", action: model.showSettings)
                             CircleControl(symbol: "xmark", label: "Close") { model.notch?.collapse(force: true) }
                         }
-                        intake
+                        if model.phase == .analyzing || model.phase == .grouped {
+                            HStack {
+                                Text(model.phase == .analyzing ? "Finding what belongs together." : "A place for everything.")
+                                    .font(.system(size: 21, weight: .semibold))
+                                Spacer()
+                                if model.phase == .grouped {
+                                    CircleControl(symbol: "arrow.counterclockwise", label: "Start over", action: model.clear)
+                                }
+                            }
+                            GroupingReviewView(model: model)
+                        } else { intake }
                         HStack {
                             Text(model.status).font(.system(size: 11)).foregroundStyle(.white.opacity(0.5)).lineLimit(2)
                             Spacer(minLength: 4)
                             if model.phase == .analyzing {
                                 ProgressView().controlSize(.small)
                                 Button("Cancel", action: model.cancelOrganization).buttonStyle(.bordered)
+                            } else if model.phase == .grouped {
+                                Label("Drag folders into Finder", systemImage: "hand.draw").font(.system(size: 10)).foregroundStyle(.mint)
                             } else if !model.files.isEmpty {
                                 Button("Organize", action: model.organize).buttonStyle(.borderedProminent).tint(.mint).foregroundStyle(.black)
                                     .disabled(model.isBusy)

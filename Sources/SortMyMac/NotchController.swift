@@ -173,6 +173,8 @@ final class NotchController {
         }
     }
 
+    func focusForEditing() { panel.makeKey() }
+
     func collapse(force: Bool = false) {
         opening?.cancel(); opening = nil
         closing?.cancel(); closing = nil
