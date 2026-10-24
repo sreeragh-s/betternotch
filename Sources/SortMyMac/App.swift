@@ -9,6 +9,7 @@ struct SortMyMacApp: App {
     var body: some Scene {
         MenuBarExtra {
             Button("Open SortMyMac") { model.showNotch() }.keyboardShortcut("o")
+            Button("Add files…") { model.chooseFiles() }.keyboardShortcut("a")
             Button("Settings…") { model.showSettings() }.keyboardShortcut(",")
             Divider()
             Text(model.status)

@@ -14,6 +14,29 @@ final class NotchPanel: NSPanel {
 
 @MainActor
 final class NotchHostingView<Content: View>: NSHostingView<Content> {
+    var receiveFiles: (([URL]) -> Bool)?
+    var targeting: ((Bool) -> Bool)?
+
+    required init(rootView: Content) {
+        super.init(rootView: rootView)
+        registerForDraggedTypes([.fileURL])
+    }
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("Use init(rootView:)") }
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        guard sender.draggingPasteboard.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]),
+              targeting?(true) == true else { return [] }
+        return .copy
+    }
+    override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        targeting?(true) == true ? .copy : []
+    }
+    override func draggingExited(_ sender: (any NSDraggingInfo)?) { _ = targeting?(false) }
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        _ = targeting?(false)
+        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        return !urls.isEmpty && receiveFiles?(urls) == true
+    }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? {
         // Shadow margins should never catch a click intended for the application below.
@@ -47,7 +70,18 @@ final class NotchController {
         panel.level = .statusBar
         panel.animationBehavior = .none
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        panel.contentView = NotchHostingView(rootView: NotchView(model: model))
+        let host = NotchHostingView(rootView: NotchView(model: model))
+        host.receiveFiles = { [weak model] urls in
+            guard let model, !model.isBusy else { return false }
+            model.receive(urls); return true
+        }
+        host.targeting = { [weak self, weak model] targeted in
+            guard let model, !model.isBusy else { return false }
+            model.dropTargeted = targeted
+            if targeted { self?.expand(immediate: true) }
+            return true
+        }
+        panel.contentView = host
         panel.dismiss = { [weak self] in self?.collapse(force: true) }
         rebuild()
         model.settings.$displayID.dropFirst().sink { [weak self] _ in
@@ -143,7 +177,7 @@ final class NotchController {
         opening?.cancel(); opening = nil
         closing?.cancel(); closing = nil
         guard model.expanded else { return }
-        if !force && (model.phase == .analyzing || model.phase == .exporting) { return }
+        if !force && (model.isBusy || model.dropTargeted) { return }
         reveal?.cancel()
         withAnimation(motion(.easeOut(duration: 0.1))) { model.contentVisible = false }
         withAnimation(motion(.spring(response: 0.25, dampingFraction: 0.9)), completionCriteria: .removed) {

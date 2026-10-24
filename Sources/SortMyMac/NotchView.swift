@@ -59,16 +59,18 @@ struct NotchView: View {
                             CircleControl(symbol: "gearshape", label: "Settings", action: model.showSettings)
                             CircleControl(symbol: "xmark", label: "Close") { model.notch?.collapse(force: true) }
                         }
-                        Text("A little order. Right here.").font(.system(size: 23, weight: .semibold))
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(.white.opacity(0.035))
-                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [5, 5])))
-                            .overlay(VStack(spacing: 10) {
-                                Image(systemName: "tray.and.arrow.down").font(.system(size: 26)).foregroundStyle(.mint)
-                                Text("Drop files to bring them together").font(.system(size: 13, weight: .medium))
-                                Text("Organize by topic. Drop folders anywhere.").font(.system(size: 11)).foregroundStyle(.white.opacity(0.45))
-                            }).frame(height: 112)
-                        Text(model.status).font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
+                        intake
+                        HStack {
+                            Text(model.status).font(.system(size: 11)).foregroundStyle(.white.opacity(0.5)).lineLimit(2)
+                            Spacer(minLength: 4)
+                            if !model.files.isEmpty {
+                                Button("Organize", action: model.organize).buttonStyle(.borderedProminent).tint(.mint).foregroundStyle(.black)
+                                    .disabled(model.isBusy)
+                            }
+                        }
+                        if let warning = model.warnings.first {
+                            Text(warning).font(.system(size: 10)).foregroundStyle(.orange).lineLimit(2).help(model.warnings.joined(separator: "\n"))
+                        }
                     }
                     .padding(.horizontal, 36).padding(.top, model.geometry.restingSize.height + 12)
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
@@ -89,4 +91,49 @@ struct NotchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .foregroundStyle(.white).environment(\.colorScheme, .dark)
     }
+    private var intake: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(model.files.isEmpty ? "A little order. Right here." : "\(model.files.count) files. New possibilities.")
+                    .font(.system(size: 22, weight: .semibold))
+                Spacer()
+                if !model.files.isEmpty {
+                    CircleControl(symbol: "plus", label: "Add files", action: model.chooseFiles).disabled(model.isBusy)
+                    CircleControl(symbol: "trash", label: "Clear session", action: model.clear).disabled(model.isBusy)
+                }
+            }
+            Group {
+                if model.files.isEmpty {
+                    Button(action: model.chooseFiles) {
+                        VStack(spacing: 9) {
+                            Image(systemName: "tray.and.arrow.down").font(.system(size: 25)).foregroundStyle(.mint)
+                            Text(model.dropTargeted ? "Drop to Organize" : "Drop files here or click to choose")
+                                .font(.system(size: 13, weight: .medium))
+                            Text("Group by topic. Move folders anywhere.").font(.system(size: 11)).foregroundStyle(.white.opacity(0.45))
+                        }.frame(maxWidth: .infinity, maxHeight: .infinity).contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityLabel("Choose files to organize")
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(model.files) { file in
+                                VStack(spacing: 7) {
+                                    Image(nsImage: NSWorkspace.shared.icon(forFile: file.url.path)).resizable().frame(width: 36, height: 36)
+                                    Text(file.name).font(.system(size: 10)).lineLimit(1).frame(width: 78)
+                                }.frame(width: 82, height: 88).help(file.name)
+                                .contextMenu {
+                                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([file.url]) }
+                                    Button("Remove from session") { model.remove(file.id) }.disabled(model.isBusy)
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        }.padding(.horizontal, 12)
+                    }
+                }
+            }
+            .frame(height: 112)
+            .background(.mint.opacity(model.dropTargeted ? 0.12 : 0.025), in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(model.dropTargeted ? .mint : .white.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [5, 5])))
+        }
+    }
+
 }
