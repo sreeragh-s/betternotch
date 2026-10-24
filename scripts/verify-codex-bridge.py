@@ -20,7 +20,7 @@ def wait_event(root, kind):
 
 
 def exercise(binary, choice):
-    with tempfile.TemporaryDirectory(prefix="SortMyMac-Codex-QA-") as temp:
+    with tempfile.TemporaryDirectory(prefix="BetterNotch-Codex-QA-") as temp:
         root = pathlib.Path(temp)
         root.chmod(0o700)
         (root / "heartbeat").write_text(json.dumps(time.time()))
@@ -58,7 +58,7 @@ def main():
     binary = str(pathlib.Path(sys.argv[1]).resolve())
     for choice in ["allow", "deny", "codex", "disconnected"]:
         exercise(binary, choice)
-    with tempfile.TemporaryDirectory(prefix="SortMyMac-Codex-QA-") as temp:
+    with tempfile.TemporaryDirectory(prefix="BetterNotch-Codex-QA-") as temp:
         root = pathlib.Path(temp)
         payload = {"hook_event_name": "Stop", "session_id": "qa-thread", "last_assistant_message": "x" * 150_000}
         result = subprocess.run([binary, "--root", temp], input=json.dumps(payload).encode(), capture_output=True, timeout=5)

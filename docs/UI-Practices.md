@@ -1,4 +1,4 @@
-# SortMyMac UI specification
+# BetterNotch UI specification
 
 ## Surface and geometry
 
@@ -58,4 +58,4 @@
 
 Codex shows only pending questions and permissions, grouped by chat. Do not create cards for routine messages or working/finished updates. Resolved prompts, drafts, and badges are removed; close the panel when no input remains. New requests can open the compact panel without taking focus or interrupting a file editor/drag. Approval controls wait for the live helper acknowledgement. Question answers require an explicit Send answer action and clear only after Codex records the reply. Disable duplicate sends while waiting; an unconfirmed delivery requires checking Codex before retrying. Open in Codex remains available for private/unsupported questions. Session records are read-only previews and can never authorize an action. Setup guidance stays in Settings.
 
-The application includes file organization, local file transformations and previews, a persistent shelf, meeting audio recording, and local meeting transcripts/summaries. Recording is always started explicitly. Transformations preserve source files; moving and renaming originals use explicit actions and recovery history. All implementation, branding, assets, and documentation are original to SortMyMac.
+The application includes file organization, local file transformations and previews, a persistent shelf, meeting audio recording, and local meeting transcripts/summaries. Recording is always started explicitly. Transformations preserve source files; moving and renaming originals use explicit actions and recovery history. All implementation, branding, assets, and documentation are original to BetterNotch.

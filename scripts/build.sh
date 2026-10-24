@@ -7,18 +7,18 @@ if [ ! -f .build/native/lib/libSMMWhisper.dylib ] || [ ! -f .build/native/lib/li
 fi
 swift build -c "$configuration"
 binary_dir="$(swift build -c "$configuration" --show-bin-path)"
-app="build/SortMyMac.app"
+app="build/BetterNotch.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp "$binary_dir/SortMyMac" "$app/Contents/MacOS/SortMyMac"
-cp "$binary_dir/SortMyMacCodexBridge" "$app/Contents/MacOS/SortMyMacCodexBridge"
-codesign --force --sign - "$app/Contents/MacOS/SortMyMacCodexBridge"
+cp "$binary_dir/BetterNotch" "$app/Contents/MacOS/BetterNotch"
+cp "$binary_dir/BetterNotchCodexBridge" "$app/Contents/MacOS/BetterNotchCodexBridge"
+codesign --force --sign - "$app/Contents/MacOS/BetterNotchCodexBridge"
 mkdir -p "$app/Contents/Frameworks" "$app/Contents/Resources/Licenses"
 cp .build/native/lib/*.dylib "$app/Contents/Frameworks/"
 cp -f .build/native/licenses/* "$app/Contents/Resources/Licenses/"
 cp -f .build/checkouts/ZIPFoundation/LICENSE "$app/Contents/Resources/Licenses/ZIPFoundation-LICENSE"
 for library in "$app/Contents/Frameworks/"*.dylib; do codesign --force --sign - "$library"; done
 cp Resources/Info.plist "$app/Contents/Info.plist"
-swift scripts/make-icon.swift build/SortMyMac.iconset
-iconutil -c icns build/SortMyMac.iconset -o "$app/Contents/Resources/AppIcon.icns"
+swift scripts/make-icon.swift build/BetterNotch.iconset
+iconutil -c icns build/BetterNotch.iconset -o "$app/Contents/Resources/AppIcon.icns"
 codesign --force --sign - "$app"
 echo "Built $PWD/$app"
