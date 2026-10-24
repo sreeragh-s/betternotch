@@ -6,6 +6,15 @@ import SortMyMacCore
 final class AppModel: ObservableObject {
     static let shared = AppModel()
     let settings = SettingsStore()
+    let moves = MoveCoordinator(journalURL: MoveCoordinator.defaultJournalURL)
+    @Published var moveRecords: [MoveRecord] = []
+    @Published var settingsPage = "Welcome"
+    var activePromises: [FolderPromise] = []
+    var pendingExports: Set<UUID> = []
+    var exportStarted: Set<UUID> = []
+    var exportFailures: [String] = []
+    var exportSessionID: UUID?
+    var exportWatchdog: Task<Void, Never>?
     @Published var phase: SessionPhase = .idle
     @Published var groups: [FileGroup] = []
     @Published var progressCompleted = 0

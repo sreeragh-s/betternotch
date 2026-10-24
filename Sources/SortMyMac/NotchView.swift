@@ -59,7 +59,7 @@ struct NotchView: View {
                             CircleControl(symbol: "gearshape", label: "Settings", action: model.showSettings)
                             CircleControl(symbol: "xmark", label: "Close") { model.notch?.collapse(force: true) }
                         }
-                        if model.phase == .analyzing || model.phase == .grouped {
+                        if model.phase == .analyzing || !model.groups.isEmpty {
                             HStack {
                                 Text(model.phase == .analyzing ? "Finding what belongs together." : "A place for everything.")
                                     .font(.system(size: 21, weight: .semibold))
@@ -69,6 +69,15 @@ struct NotchView: View {
                                 }
                             }
                             GroupingReviewView(model: model)
+                        } else if model.phase == .completed {
+                            VStack(spacing: 12) {
+                                Image(systemName: "checkmark.seal.fill").font(.system(size: 36)).foregroundStyle(.mint)
+                                Text("Everything in its place.").font(.system(size: 22, weight: .semibold))
+                                HStack {
+                                    Button("Organize more", action: model.chooseFiles).buttonStyle(.borderedProminent).tint(.mint).foregroundStyle(.black)
+                                    Button("Undo move", action: model.showRecovery).buttonStyle(.bordered)
+                                }
+                            }.frame(maxWidth: .infinity).frame(height: 198)
                         } else { intake }
                         HStack {
                             Text(model.status).font(.system(size: 11)).foregroundStyle(.white.opacity(0.5)).lineLimit(2)
@@ -76,8 +85,16 @@ struct NotchView: View {
                             if model.phase == .analyzing {
                                 ProgressView().controlSize(.small)
                                 Button("Cancel", action: model.cancelOrganization).buttonStyle(.bordered)
+                            } else if model.phase == .exporting {
+                                ProgressView().controlSize(.small)
                             } else if model.phase == .grouped {
-                                Label("Drag folders into Finder", systemImage: "hand.draw").font(.system(size: 10)).foregroundStyle(.mint)
+                                Label("Drag All Folders", systemImage: "hand.draw.fill")
+                                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(.black)
+                                    .padding(.horizontal, 12).padding(.vertical, 8)
+                                    .background(.mint, in: Capsule())
+                                    .overlay { FolderDragHandle(groups: model.groups, model: model, label: "Drag all folders to Finder") }
+                            } else if model.phase == .failed && !model.groups.isEmpty {
+                                Button("Recovery", action: model.showRecovery).buttonStyle(.bordered)
                             } else if !model.files.isEmpty {
                                 Button("Organize", action: model.organize).buttonStyle(.borderedProminent).tint(.mint).foregroundStyle(.black)
                                     .disabled(model.isBusy)

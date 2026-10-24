@@ -44,12 +44,14 @@ public enum FileIntake {
         }
         return FileDescriptor(url: url.standardizedFileURL, size: Int64(values.fileSize ?? 0),
                               modified: values.contentModificationDate ?? .distantPast,
-                              typeIdentifier: values.contentType?.identifier ?? UTType.data.identifier)
+                              typeIdentifier: values.contentType?.identifier ?? UTType.data.identifier,
+                              identity: try LocalFileOperations().stamp(url).identity)
     }
 
     public static func validateUnchanged(_ file: FileDescriptor) throws {
         let current = try describe(file.url)
-        guard current.size == file.size, current.modified == file.modified else {
+        guard current.size == file.size, current.modified == file.modified,
+              file.identity == nil || current.identity == file.identity else {
             throw SortError.message("\(file.name) changed since it was added. Add it again before organizing or moving it.")
         }
     }

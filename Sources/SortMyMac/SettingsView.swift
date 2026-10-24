@@ -28,27 +28,26 @@ final class SettingsWindow: NSWindowController, NSWindowDelegate {
 struct SettingsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var settings: SettingsStore
-    @State private var page = "Welcome"
     @State private var checking = false
     @State private var connectionMessage = ""
     private let pages = [("Welcome", "sparkles"), ("Notch", "rectangle.topthird.inset.filled"), ("Cloudflare", "cloud"), ("Recovery", "arrow.uturn.backward")]
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $page) {
+            List(selection: $model.settingsPage) {
                 ForEach(pages, id: \.0) { title, symbol in Label(title, systemImage: symbol).tag(title).padding(.vertical, 4) }
             }
             .listStyle(.sidebar).navigationSplitViewColumnWidth(190)
             .toolbar(removing: .sidebarToggle)
         } detail: {
             Group {
-                switch page {
+                switch model.settingsPage {
                 case "Notch": notchSettings
                 case "Cloudflare": cloudSettings
-                case "Recovery": Form { Section("Move history") { Text("Completed moves and interrupted operations will appear here.").foregroundStyle(.secondary) } }.formStyle(.grouped)
+                case "Recovery": RecoveryView(model: model)
                 default: welcome
                 }
-            }.navigationTitle(page)
+            }.navigationTitle(model.settingsPage)
         }
         .tint(.mint)
         .frame(minWidth: 760, minHeight: 570)
@@ -72,7 +71,7 @@ struct SettingsView: View {
                 Text("When you organize, filenames, metadata, limited document text, and small image previews are sent to Cloudflare using your account. Originals stay in place until you drop the folders into Finder.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack {
-                    Button("Connect Cloudflare") { page = "Cloudflare" }.buttonStyle(.borderedProminent)
+                    Button("Connect Cloudflare") { model.settingsPage = "Cloudflare" }.buttonStyle(.borderedProminent)
                     Button("Try the notch") {
                         settings.completedSetup = true
                         NSApp.keyWindow?.close()

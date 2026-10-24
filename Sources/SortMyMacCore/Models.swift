@@ -10,13 +10,15 @@ public struct FileDescriptor: Identifiable, Codable, Hashable, Sendable {
     public let size: Int64
     public let modified: Date
     public let typeIdentifier: String
+    public let identity: String?
 
-    public init(id: UUID = UUID(), url: URL, size: Int64, modified: Date, typeIdentifier: String) {
+    public init(id: UUID = UUID(), url: URL, size: Int64, modified: Date, typeIdentifier: String, identity: String? = nil) {
         self.id = id
         self.url = url
         self.size = size
         self.modified = modified
         self.typeIdentifier = typeIdentifier
+        self.identity = identity
     }
 
     public var name: String { url.lastPathComponent }
