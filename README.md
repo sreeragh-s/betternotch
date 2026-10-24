@@ -25,7 +25,7 @@ Requests use your account's Workers AI access and billing. No service credential
 ## Organize files
 
 1. Select up to 50 regular local files in Finder and drag them near the notch. Drop onto **Organize**. You can also click the empty tray or choose **Add files…** from the menu bar.
-2. Select **Organize**. Original files stay in place during analysis. Limited excerpts are extracted locally from text, Markdown, PDF, and RTF; images receive small previews. Other formats contribute metadata. Download cloud placeholders in Finder first. Folders, bundles, and symbolic links are excluded.
+2. Select **Organize**. Screenshots go together in **Screenshots**, recognized from macOS capture metadata or standard timestamped screenshot filenames. They do not need matching subjects and are excluded from cloud analysis. Remaining files group by topic: limited excerpts are extracted locally from text, Markdown, PDF, and RTF; other images receive small previews. Other formats contribute metadata. Original files stay in place during analysis. Download cloud placeholders in Finder first. Folders, bundles, and symbolic links are excluded.
 3. Review the folder cards. Edit a folder's name; right-click a file icon to move it into another group or a new folder. Extra files are accessible from the card's count menu.
 4. Drag a folder's icon, or **Drag All Folders**, into a Finder folder or onto the Desktop. Click the drag control instead to use a native destination picker, including with VoiceOver. The app moves originals only when a destination is accepted. Finder controls icon placement and sorting.
 
@@ -35,9 +35,9 @@ The tray, folder cards, and Settings follow macOS light/dark appearance and acce
 
 ## Privacy and grouping
 
-Choosing Organize sends filenames, types, sizes, dates, up to 1,200 characters of extracted text per file, and small image previews to [Cloudflare Clef](https://developers.cloudflare.com/workers-ai/models/clef/). The app does not send absolute source paths. Previews are packed into bounded contact sheets with explicit cell coordinates. No data leaves the Mac merely because files were added to the tray.
+For files not recognized as screenshots, choosing Organize sends filenames, types, sizes, dates, up to 1,200 characters of extracted text per file, and small image previews to [Cloudflare Clef](https://developers.cloudflare.com/workers-ai/models/clef/). Screenshot-only sessions make no classification requests. The app does not send absolute source paths. Previews are packed into bounded contact sheets with explicit cell coordinates. No data leaves the Mac merely because files were added to the tray.
 
-Clef scores pairwise topic relationships through typed decisions, in batches of at most 64 questions and four sheets. Complete-link clustering requires every relationship between merged groups to score at least 0.8. Unknown or uncertain relationships do not imply a group. Folder names come from shared local keywords and remain editable; unmatched files go into **Other**. A 50-file session compares up to 1,225 relationships over 20 batches.
+After local screenshot grouping, Clef scores pairwise topic relationships through typed decisions, in batches of at most 64 questions and four sheets. Complete-link clustering requires every relationship between merged topic groups to score at least 0.8. Unknown or uncertain relationships do not imply a group. Folder names come from shared local keywords and remain editable; unmatched files go into **Other**. A 50-file session compares up to 1,225 relationships over 20 batches; screenshots reduce that work. Renamed captures without macOS capture metadata cannot reliably be recognized locally and follow normal topic grouping.
 
 ## Moves, recovery, and Undo
 

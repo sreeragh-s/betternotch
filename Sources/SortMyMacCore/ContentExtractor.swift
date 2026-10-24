@@ -8,8 +8,9 @@ public struct FileEvidence: Sendable {
     public let file: FileDescriptor
     public let excerpt: String
     public let preview: Data?
-    public init(file: FileDescriptor, excerpt: String = "", preview: Data? = nil) {
-        self.file = file; self.excerpt = excerpt; self.preview = preview
+    public let isScreenshot: Bool
+    public init(file: FileDescriptor, excerpt: String = "", preview: Data? = nil, isScreenshot: Bool = false) {
+        self.file = file; self.excerpt = excerpt; self.preview = preview; self.isScreenshot = isScreenshot
     }
 }
 
@@ -18,6 +19,10 @@ public actor ContentExtractor {
     public func extract(_ file: FileDescriptor) throws -> FileEvidence {
         try Task.checkCancellation()
         try FileIntake.validateUnchanged(file)
+        if ScreenshotDetector.isScreenshot(file) {
+            try FileIntake.validateUnchanged(file)
+            return FileEvidence(file: file, isScreenshot: true)
+        }
         let type = UTType(file.typeIdentifier) ?? .data
         var excerpt = ""
         var preview: Data?

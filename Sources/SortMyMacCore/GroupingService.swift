@@ -32,6 +32,11 @@ public struct ClefGroupingService: GroupingService {
         }
         let batches = Self.batches(evidence)
         var scores: [PairKey: Double] = [:]
+        let localPlan = TopicClusterer.plan(evidence, scores: scores, includeUncertain: false)
+        if !localPlan.groups.isEmpty {
+            let message = batches.isEmpty ? "Screenshots gathered locally." : "Screenshots gathered · finding topics in remaining files…"
+            await progress(GroupingProgress(message, plan: localPlan))
+        }
         for (index, batch) in batches.enumerated() {
             try Task.checkCancellation()
             await progress(GroupingProgress("Finding connections · batch \(index + 1) of \(batches.count)", completed: index, total: batches.count))
@@ -49,8 +54,9 @@ public struct ClefGroupingService: GroupingService {
     static func batches(_ evidence: [FileEvidence]) -> [[PairKey]] {
         var batches: [[PairKey]] = []
         var current: [PairKey] = []
-        for a in evidence.indices {
-            for b in evidence.indices where b > a {
+        let topicIndexes = evidence.indices.filter { !evidence[$0].isScreenshot }
+        for a in topicIndexes {
+            for b in topicIndexes where b > a {
                 if current.count == 64 {
                     batches.append(current); current = []
                 }
@@ -65,7 +71,7 @@ public struct ClefGroupingService: GroupingService {
 public enum TopicClusterer {
     public static func plan(_ evidence: [FileEvidence], scores: [PairKey: Double], includeUncertain: Bool = true) -> GroupingPlan {
         // Complete-link clustering: all cross-group relationships must exceed the threshold.
-        var clusters = evidence.indices.map { [$0] }
+        var clusters = evidence.indices.filter { !evidence[$0].isScreenshot }.map { [$0] }
         while true {
             var best: (Int, Int, Double)?
             for a in clusters.indices {
@@ -82,6 +88,11 @@ public enum TopicClusterer {
         var groups: [FileGroup] = []
         var uncertain: [FileDescriptor] = []
         var names: [String: Int] = [:]
+        let screenshots = evidence.filter(\.isScreenshot).map(\.file)
+        if let first = screenshots.first {
+            groups.append(FileGroup(id: first.id, name: "Screenshots", files: screenshots))
+            names["Screenshots"] = 1
+        }
         for cluster in clusters {
             let items = cluster.map { evidence[$0] }
             if cluster.count == 1 { uncertain.append(items[0].file); continue }

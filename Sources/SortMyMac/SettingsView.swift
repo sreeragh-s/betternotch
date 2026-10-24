@@ -64,10 +64,10 @@ struct SettingsView: View {
                 }
                 VStack(alignment: .leading, spacing: 18) {
                     step("1", "Bring your files", "Select files in Finder and drag them near the notch.")
-                    step("2", "Find the connections", "Choose Organize. Clef groups files by topic or project.")
+                    step("2", "Find the connections", "Choose Organize. Screenshots stay together; Clef groups other files by topic or project.")
                     step("3", "Drop your folders", "Review the groups, then drag folders into Finder. Originals move at this step.")
                 }
-                Text("When you organize, filenames, metadata, limited document text, and small image previews are sent to Cloudflare using your account. Originals stay in place until you drop the folders into Finder.")
+                Text("Screenshots are grouped locally. When you organize other files, filenames, metadata, limited document text, and small image previews are sent to Cloudflare using your account. Originals stay in place until you drop the folders into Finder.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack {
                     Button("Connect Cloudflare") { model.settingsPage = "Cloudflare" }.buttonStyle(.borderedProminent)
@@ -144,7 +144,7 @@ struct SettingsView: View {
                 if !connectionMessage.isEmpty { Text(connectionMessage).font(.caption).textSelection(.enabled) }
             }
             Section("What leaves your Mac") {
-                Text("Organize sends filenames, types, sizes, dates, limited extracted text, and small image previews to Cloudflare Clef. No files are uploaded before you choose Organize. No app backend or telemetry is used.")
+                Text("Recognized screenshots stay together and are excluded from cloud analysis. For other files, Organize sends filenames, types, sizes, dates, limited extracted text, and small image previews to Cloudflare Clef. No files are uploaded before you choose Organize. No app backend or telemetry is used.")
                     .font(.callout).foregroundStyle(.secondary)
                 Link("Cloudflare Workers AI documentation", destination: URL(string: "https://developers.cloudflare.com/workers-ai/models/clef/")!)
             }
