@@ -30,7 +30,7 @@ struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     @State private var checking = false
     @State private var connectionMessage = ""
-    private let pages = [("Welcome", "sparkles"), ("Notch", "rectangle.topthird.inset.filled"), ("Cloudflare", "cloud"), ("Recovery", "arrow.uturn.backward")]
+    private let pages = [("Welcome", "sparkles"), ("Notch", "rectangle.topthird.inset.filled"), ("Permissions", "lock.shield"), ("Codex", "terminal"), ("Cloudflare", "cloud"), ("Meetings", "waveform"), ("Local AI", "sparkles"), ("Recovery", "arrow.uturn.backward")]
 
     var body: some View {
         NavigationSplitView {
@@ -43,13 +43,18 @@ struct SettingsView: View {
             Group {
                 switch model.settingsPage {
                 case "Notch": notchSettings
+                case "Permissions": PermissionsSettingsView()
+                case "Codex": CodexSettingsView(codex: model.hub.codex)
                 case "Cloudflare": cloudSettings
                 case "Recovery": RecoveryView(model: model)
+                case "Meetings": SpeechModelView(hub: model.hub).padding(24)
+                case "Local AI": LocalAISettings(hub: model.hub)
                 default: welcome
                 }
             }.navigationTitle(model.settingsPage)
         }
         .frame(minWidth: 760, minHeight: 570)
+        .controlSize(.large)
     }
 
     private var welcome: some View {
@@ -58,14 +63,14 @@ struct SettingsView: View {
                 Image(systemName: "square.stack.3d.up.fill").font(.system(size: 42)).foregroundStyle(Color.accentColor)
                     .frame(width: 76, height: 76).background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 22))
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("A little order.\nRight at the notch.").font(.system(size: 32, weight: .semibold))
-                    Text("Bring related files together, then put them where they belong.")
+                    Text("A little help.\nRight at the notch.").font(.system(size: 32, weight: .semibold))
+                    Text("File tools, previews, and local meeting notes—within reach.")
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                 }
                 VStack(alignment: .leading, spacing: 18) {
-                    step("1", "Bring your files", "Select files in Finder and drag them near the notch.")
-                    step("2", "Find the connections", "Choose Organize. Screenshots stay together; Clef groups other files by topic or project.")
-                    step("3", "Drop your folders", "Review the groups, then drag folders into Finder. Originals move at this step.")
+                    step("1", "Open your tools", "Hover for Home, or drag files toward the notch for relevant actions.")
+                    step("2", "Preview before keeping", "Resize images, trim clips, edit PDFs, and organize files. Transformations create new outputs.")
+                    step("3", "Keep your meetings", "Record microphone and system audio, then transcribe locally with a downloaded speech model.")
                 }
                 Text("Screenshots are grouped locally. When you organize other files, filenames, metadata, limited document text, and small image previews are sent to Cloudflare using your account. Originals stay in place until you drop the folders into Finder.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -148,6 +153,24 @@ struct SettingsView: View {
                     .font(.callout).foregroundStyle(.secondary)
                 Link("Cloudflare Workers AI documentation", destination: URL(string: "https://developers.cloudflare.com/workers-ai/models/clef/")!)
             }
+        }.formStyle(.grouped)
+    }
+}
+
+struct LocalAISettings: View {
+    @ObservedObject var hub: HubModel
+    var body: some View {
+        Form {
+            Section("Local summaries") {
+                TextField("Ollama endpoint", text: $hub.ollamaEndpoint)
+                TextField("Installed model name", text: $hub.ollamaModel)
+                Text("Start Ollama locally and enter a model you have installed. Meeting transcripts are sent only to this local endpoint when you choose Generate local summary.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("macOS Shortcuts") {
+                TextField("Default Shortcut name", text: $hub.shortcutName)
+                Text("Choose a Shortcut that accepts file input and returns an output. Shortcuts run only when you select the action.").font(.caption).foregroundStyle(.secondary)
+            }
+            Button("Save settings", action: hub.saveLocalSettings)
         }.formStyle(.grouped)
     }
 }

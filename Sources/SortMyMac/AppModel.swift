@@ -6,6 +6,7 @@ import SortMyMacCore
 final class AppModel: ObservableObject {
     static let shared = AppModel()
     let settings = SettingsStore()
+    let hub = HubModel()
     #if DEBUG
     var pinOpenForSmokeTest = false
     var fixtureGroupingService: (any GroupingService)?

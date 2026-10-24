@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Security
+import LocalAuthentication
 import SwiftUI
 
 @MainActor
@@ -20,7 +21,13 @@ final class SettingsStore: ObservableObject {
         haptics = UserDefaults.standard.object(forKey: "haptics") as? Bool ?? true
         accountID = UserDefaults.standard.string(forKey: "accountID") ?? ""
         completedSetup = UserDefaults.standard.bool(forKey: "completedSetup")
-        token = (try? Keychain.read()) ?? ""
+        token = ""
+        if !ProcessInfo.processInfo.arguments.contains("--smoke-test") {
+            Task { [weak self] in
+                let saved = try? await Task.detached { try Keychain.read() }.value
+                if self?.token.isEmpty == true { self?.token = saved ?? "" }
+            }
+        }
     }
 
     func saveToken() {
@@ -40,6 +47,8 @@ enum Keychain {
     static func read() throws -> String {
         var lookup = query
         lookup[kSecReturnData as String] = true
+        let authentication = LAContext(); authentication.interactionNotAllowed = true
+        lookup[kSecUseAuthenticationContext as String] = authentication
         lookup[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
         let status = SecItemCopyMatching(lookup as CFDictionary, &result)

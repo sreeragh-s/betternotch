@@ -62,6 +62,8 @@ final class NotchController {
         panel = NotchPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel],
                            backing: .buffered, defer: false)
         panel.backgroundColor = .clear
+        // Only the notch stays dark; Settings and Recovery retain the system appearance.
+        panel.appearance = NSAppearance(named: .darkAqua)
         panel.isOpaque = false
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
@@ -72,20 +74,20 @@ final class NotchController {
         panel.animationBehavior = .none
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         let host = NotchHostingView(rootView: NotchView(model: model))
-        host.receiveFiles = { [weak model] urls in
-            guard let model, !model.isBusy else { return false }
-            model.receive(urls); return true
+        host.receiveFiles = { [weak self, weak model] urls in
+            guard let self, let model else { return false }
+            model.hub.receive(urls); self.expand(immediate: true); return true
         }
         host.targeting = { [weak self, weak model] targeted in
-            guard let model, !model.isBusy else { return false }
+            guard let model else { return false }
             model.dropTargeted = targeted
+            self?.resizeForContent()
             if targeted { self?.expand(immediate: true) }
             return true
         }
         panel.contentView = host
         panel.dismiss = { [weak self] in
-            if self?.model.phase == .analyzing { self?.model.cancelOrganization() }
-            else { self?.collapse() }
+            self?.collapse(force: true)
         }
         model.$status.removeDuplicates().debounce(for: .milliseconds(700), scheduler: RunLoop.main)
             .sink { [weak self] text in
@@ -120,11 +122,19 @@ final class NotchController {
             panel.orderOut(nil); return
         }
         opening?.cancel(); closing?.cancel(); reveal?.cancel()
+        if model.expanded { model.contentVisible = true }
         model.geometry = NotchGeometry(screen: screen.frame, safeTop: screen.safeAreaInsets.top,
                                        leftWidth: screen.auxiliaryTopLeftArea?.width,
-                                       rightWidth: screen.auxiliaryTopRightArea?.width)
+                                       rightWidth: screen.auxiliaryTopRightArea?.width,
+                                       editor: model.hub.route.isLarge && !model.dropTargeted,
+                                       availableHeight: screen.frame.maxY - screen.visibleFrame.minY,
+                                       activity: model.hub.isRecording || !model.hub.currentJobs.isEmpty || model.isBusy || model.hub.codex.attentionCount > 0)
         panel.setFrame(model.expanded ? geometry.expandedFrame : geometry.restingFrame, display: true)
         panel.orderFrontRegardless()
+    }
+
+    func resizeForContent() {
+        rebuild()
     }
 
     static func identifier(_ screen: NSScreen) -> String {
@@ -155,6 +165,7 @@ final class NotchController {
         closing?.cancel(); closing = nil
         guard !model.expanded else { if keyboard { panel.makeKey() }; return }
         if !immediate {
+            if model.hub.route != .home { model.hub.route = .home }
             guard opening == nil else { return }
             let work = DispatchWorkItem { [weak self] in
                 self?.opening = nil
@@ -192,7 +203,7 @@ final class NotchController {
         #if DEBUG
         if model.pinOpenForSmokeTest && !force { return }
         #endif
-        if !force && (model.isBusy || model.dropTargeted) { return }
+        if !force && (model.dropTargeted || model.hub.editing || model.activeDragSource != nil) { return }
         reveal?.cancel()
         withAnimation(motion(.easeOut(duration: 0.1))) { model.contentVisible = false }
         withAnimation(motion(.spring(response: 0.25, dampingFraction: 0.9)), completionCriteria: .removed) {
