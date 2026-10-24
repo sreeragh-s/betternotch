@@ -63,7 +63,10 @@ struct NotchView: View {
                         HStack {
                             Text(model.status).font(.system(size: 11)).foregroundStyle(.white.opacity(0.5)).lineLimit(2)
                             Spacer(minLength: 4)
-                            if !model.files.isEmpty {
+                            if model.phase == .analyzing {
+                                ProgressView().controlSize(.small)
+                                Button("Cancel", action: model.cancelOrganization).buttonStyle(.bordered)
+                            } else if !model.files.isEmpty {
                                 Button("Organize", action: model.organize).buttonStyle(.borderedProminent).tint(.mint).foregroundStyle(.black)
                                     .disabled(model.isBusy)
                             }

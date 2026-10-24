@@ -7,6 +7,10 @@ final class AppModel: ObservableObject {
     static let shared = AppModel()
     let settings = SettingsStore()
     @Published var phase: SessionPhase = .idle
+    @Published var groups: [FileGroup] = []
+    @Published var progressCompleted = 0
+    @Published var progressTotal = 0
+    private var organizationTask: Task<Void, Never>?
     @Published var files: [FileDescriptor] = []
     @Published var warnings: [String] = []
     @Published var dropTargeted = false
@@ -21,6 +25,7 @@ final class AppModel: ObservableObject {
 
     func receive(_ urls: [URL]) {
         guard !isBusy else { return }
+        groups = []
         phase = .receiving
         let result = FileIntake.inspect(urls, existing: files)
         files = result.files
@@ -47,6 +52,7 @@ final class AppModel: ObservableObject {
 
     func remove(_ id: UUID) {
         guard !isBusy else { return }
+        groups = []
         files.removeAll { $0.id == id }
         warnings = []
         phase = files.isEmpty ? .idle : .ready
@@ -55,14 +61,53 @@ final class AppModel: ObservableObject {
 
     func clear() {
         guard !isBusy else { return }
+        groups = []
         files = []; warnings = []; phase = .idle
         status = "Your next tidy moment starts here."
     }
 
     func organize() {
-        status = "Connect Cloudflare in Settings to organize these files."
-        showSettings()
+        guard !isBusy, !files.isEmpty else { return }
+        let credentials = CloudflareCredentials(accountID: settings.accountID.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                token: settings.token.trimmingCharacters(in: .whitespacesAndNewlines))
+        do { try credentials.validate() }
+        catch { warnings = [error.localizedDescription]; return }
+        settings.saveToken()
+        phase = .analyzing; warnings = []; groups = []
+        progressCompleted = 0; progressTotal = 0
+        let service = ClefGroupingService(client: ClefClient(credentials: credentials))
+        let selected = files
+        organizationTask = Task { [weak self] in
+            do {
+                let plan = try await service.group(selected) { [weak self] progress in
+                    await self?.updateProgress(progress)
+                }
+                guard !Task.isCancelled, let self else { return }
+                self.groups = plan.groups
+                self.phase = .grouped
+                self.status = "\(plan.groups.count) folders ready. Review, then drag them into Finder."
+            } catch is CancellationError {
+                guard let self else { return }
+                self.groups = []; self.phase = .ready
+                self.status = "Organization canceled. Your files are still in place."
+            } catch {
+                guard let self else { return }
+                self.groups = []; self.phase = .failed
+                self.warnings = [error.localizedDescription]
+                self.status = "Couldn’t finish grouping. Your files are still in place."
+            }
+            self?.organizationTask = nil
+        }
     }
+
+    private func updateProgress(_ progress: GroupingProgress) {
+        guard phase == .analyzing else { return }
+        status = progress.message
+        progressCompleted = progress.completed; progressTotal = progress.total
+        if let plan = progress.plan { groups = plan.groups }
+    }
+
+    func cancelOrganization() { organizationTask?.cancel() }
 
     func showSettings() {
         notch?.collapse(force: true)

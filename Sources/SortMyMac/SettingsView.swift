@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import SortMyMacCore
 
 @MainActor
 final class SettingsWindow: NSWindowController, NSWindowDelegate {
@@ -28,6 +29,8 @@ struct SettingsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var settings: SettingsStore
     @State private var page = "Welcome"
+    @State private var checking = false
+    @State private var connectionMessage = ""
     private let pages = [("Welcome", "sparkles"), ("Notch", "rectangle.topthird.inset.filled"), ("Cloudflare", "cloud"), ("Recovery", "arrow.uturn.backward")]
 
     var body: some View {
@@ -125,6 +128,22 @@ struct SettingsView: View {
                     if !settings.credentialMessage.isEmpty { Text(settings.credentialMessage).font(.caption).foregroundStyle(.secondary) }
                 }
                 Text("Use a token with Workers AI Read access for this account. Your token stays on this Mac in Keychain.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section {
+                Button(checking ? "Testing connection…" : "Test connection") {
+                    checking = true; connectionMessage = ""
+                    let credentials = CloudflareCredentials(accountID: settings.accountID.trimmingCharacters(in: .whitespacesAndNewlines), token: settings.token.trimmingCharacters(in: .whitespacesAndNewlines))
+                    Task {
+                        do {
+                            try await ClefClient(credentials: credentials).checkCredentials()
+                            settings.saveToken()
+                            settings.completedSetup = true
+                            connectionMessage = "Connected to Cloudflare Clef. You’re ready to organize."
+                        } catch { connectionMessage = error.localizedDescription }
+                        checking = false
+                    }
+                }.disabled(checking)
+                if !connectionMessage.isEmpty { Text(connectionMessage).font(.caption).textSelection(.enabled) }
             }
             Section("What leaves your Mac") {
                 Text("Organize sends filenames, types, sizes, dates, limited extracted text, and small image previews to Cloudflare Clef. No files are uploaded before you choose Organize. No app backend or telemetry is used.")
