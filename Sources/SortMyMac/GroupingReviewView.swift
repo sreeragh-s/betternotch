@@ -52,6 +52,7 @@ struct GroupingReviewView: View {
                                             }
                                         }
                                     }.menuStyle(.borderlessButton).fixedSize().font(.system(size: 10))
+                                    .anchorPreference(key: FolderDragExclusions.self, value: .bounds) { [$0] }
                                 }
                                 Spacer(minLength: 0)
                             }
@@ -92,7 +93,6 @@ struct FolderCard<Files: View>: View {
             HStack(spacing: 8) {
                 Image(systemName: "folder.fill").font(.system(size: 24)).foregroundStyle(Color.accentColor)
                     .frame(width: 32, height: 32)
-                    .overlay { if editing || model.phase == .exporting { FolderDragHandle(groups: [group], model: model, label: "Drag \(group.name) folder to Finder") } }
                 VStack(alignment: .leading, spacing: 3) {
                     if editing {
                         TextField("Folder name", text: $name).textFieldStyle(.plain).font(.system(size: 12, weight: .semibold))
@@ -100,6 +100,7 @@ struct FolderCard<Files: View>: View {
                             .onChange(of: name) { _, value in model.renameDraft(group.id, to: value) }
                             .onTapGesture { model.notch?.focusForEditing() }
                             .accessibilityLabel("Name for \(group.name)")
+                            .anchorPreference(key: FolderDragExclusions.self, value: .bounds) { [$0] }
                     } else { Text(group.name).font(.system(size: 12, weight: .semibold)).lineLimit(1) }
                     Text("\(group.files.count) \(group.files.count == 1 ? "file" : "files")")
                         .font(.system(size: 10)).foregroundStyle(.secondary)
@@ -112,6 +113,16 @@ struct FolderCard<Files: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(hovered ? 0.09 : 0.045), in: RoundedRectangle(cornerRadius: 13))
         .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.accentColor.opacity(hovered ? 0.35 : 0.1), lineWidth: 1))
+        .overlayPreferenceValue(FolderDragExclusions.self) { exclusions in
+            if editing || model.phase == .exporting {
+                GeometryReader { geometry in
+                    FolderDragHandle(groups: [group], model: model, label: "Drag \(group.name) folder to Finder",
+                                     passthroughRects: exclusions.map { geometry[$0] }, cornerRadius: 13,
+                                     tracksCardMouseEvents: true)
+                        .allowsHitTesting(false)
+                }
+            }
+        }
         .onHover { hovered = $0 }
         .onAppear { name = group.name }
         .onChange(of: group.name) { _, value in if name != value { name = value } }

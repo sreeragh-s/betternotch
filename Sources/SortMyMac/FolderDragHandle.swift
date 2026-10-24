@@ -3,10 +3,21 @@ import SortMyMacCore
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Interactive SwiftUI controls keep their own mouse handling inside a card's drag surface.
+struct FolderDragExclusions: PreferenceKey {
+    static let defaultValue: [Anchor<CGRect>] = []
+    static func reduce(value: inout [Anchor<CGRect>], nextValue: () -> [Anchor<CGRect>]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
 struct FolderDragHandle: NSViewRepresentable {
     let groups: [FileGroup]
     let model: AppModel
     let label: String
+    var passthroughRects: [CGRect] = []
+    var cornerRadius: CGFloat = 0
+    var tracksCardMouseEvents = false
     func makeNSView(context: Context) -> FolderDragView {
         let view = FolderDragView()
         view.setAccessibilityElement(true)
@@ -15,9 +26,15 @@ struct FolderDragHandle: NSViewRepresentable {
     }
     func updateNSView(_ view: FolderDragView, context: Context) {
         view.groups = groups; view.model = model
+        view.passthroughRects = passthroughRects
+        view.cornerRadius = cornerRadius
+        view.tracksCardMouseEvents = tracksCardMouseEvents
         view.toolTip = label + ". Or click to choose a destination."
         view.setAccessibilityLabel(label)
         view.setAccessibilityHelp("Drag into a Finder folder or onto the Desktop to move the original files. You can undo the move in Recovery.")
+    }
+    static func dismantleNSView(_ view: FolderDragView, coordinator: ()) {
+        view.stopMonitoringMouseEvents()
     }
 }
 
@@ -25,7 +42,65 @@ struct FolderDragHandle: NSViewRepresentable {
 final class FolderDragView: NSView, NSDraggingSource {
     var groups: [FileGroup] = []
     weak var model: AppModel?
+    var passthroughRects: [CGRect] = []
+    var cornerRadius: CGFloat = 0
+    var tracksCardMouseEvents = false {
+        didSet { if tracksCardMouseEvents != oldValue { updateEventMonitor() } }
+    }
     private var origin: CGPoint?
+    private var mouseMonitor: Any?
+    override var isFlipped: Bool { true }
+    func containsDragPoint(_ point: CGPoint) -> Bool {
+        !isHiddenOrHasHiddenAncestor && visibleRect.contains(point)
+            && NSBezierPath(roundedRect: bounds, xRadius: cornerRadius, yRadius: cornerRadius).contains(point)
+            && !passthroughRects.contains(where: { $0.contains(point) })
+    }
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard !tracksCardMouseEvents, containsDragPoint(convert(point, from: superview)) else { return nil }
+        return super.hitTest(point)
+    }
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updateEventMonitor()
+    }
+    func stopMonitoringMouseEvents() {
+        if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
+        mouseMonitor = nil
+        origin = nil
+    }
+    private func updateEventMonitor() {
+        stopMonitoringMouseEvents()
+        guard tracksCardMouseEvents, window != nil else { return }
+        // Observe only left-button gestures. SwiftUI retains normal hit testing for
+        // file context menus, scrolling, name editing, and the overflow menu.
+        mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]) { [weak self] event in
+            guard let self else { return event }
+            return self.trackCardMouseEvent(event)
+        }
+    }
+    private func trackCardMouseEvent(_ event: NSEvent) -> NSEvent? {
+        guard let window, event.window === window else {
+            if event.type == .leftMouseDown { origin = nil }
+            return event
+        }
+        switch event.type {
+        case .leftMouseDown:
+            origin = nil
+            guard !event.modifierFlags.contains(.control), model?.phase == .grouped,
+                  containsDragPoint(convert(event.locationInWindow, from: nil)) else { return event }
+            mouseDown(with: event)
+        case .leftMouseDragged:
+            guard origin != nil else { return event }
+            mouseDragged(with: event)
+            if origin == nil { return nil }
+        case .leftMouseUp:
+            guard origin != nil else { return event }
+            if containsDragPoint(convert(event.locationInWindow, from: nil)) { mouseUp(with: event) }
+            else { origin = nil }
+        default: break
+        }
+        return event
+    }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { origin = event.locationInWindow }
     override func mouseUp(with event: NSEvent) {
