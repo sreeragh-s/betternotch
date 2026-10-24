@@ -3,15 +3,30 @@ import SwiftUI
 
 @main
 struct SortMyMacApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    @ObservedObject private var model = AppModel.shared
+
     var body: some Scene {
-        WindowGroup("SortMyMac") {
-            VStack(spacing: 16) {
-                Image(systemName: "folder.badge.gearshape")
-                    .font(.system(size: 48)).foregroundStyle(.mint)
-                Text("A little order. Right at the notch.").font(.title2)
-                Text("Your files, brought together.").foregroundStyle(.secondary)
-            }
-            .padding(48).frame(minWidth: 480, minHeight: 280)
+        MenuBarExtra {
+            Button("Open SortMyMac") { model.showNotch() }.keyboardShortcut("o")
+            Button("Settings…") { model.showSettings() }.keyboardShortcut(",")
+            Divider()
+            Text(model.status)
+            Divider()
+            Button("Quit SortMyMac") { NSApp.terminate(nil) }.keyboardShortcut("q")
+        } label: {
+            Image(systemName: "folder.badge.gearshape").accessibilityLabel("SortMyMac")
         }
     }
+}
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        let model = AppModel.shared
+        model.notch = NotchController(model: model)
+        if !model.settings.completedSetup { model.showSettings() }
+    }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
