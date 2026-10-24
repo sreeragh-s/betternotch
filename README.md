@@ -1,18 +1,46 @@
-# SortMyMac
+# BetterNotch
 
-A native macOS notch hub for file tools, visual previews, meeting recording, local transcripts, and Codex activity.
+A native macOS notch hub for file tools, visual previews, meeting recording, offline transcripts, and Codex questions and permissions. Hover to open your tools; drag files toward the notch to choose an action.
+
+Built with SwiftUI and AppKit for **macOS 14 or later**. On Macs without a camera notch, BetterNotch appears as a small island at the top of the display.
+
+## Features at a glance
+
+| Area | Available features |
+| --- | --- |
+| Notch hub | Six colorful Home tiles, drag-only drop target, compact utility pages, larger editors, keyboard access, and recording/job indicators |
+| Shelf | Persistent file references, multiselect/removal, Quick Look, drag-out, Finder reveal, missing-file location, and pinned destinations |
+| Images | Interactive drag crop, resize, rotation, JPEG/PNG/HEIC/TIFF/WebP conversion, compression, background removal, OCR, and result comparison |
+| Audio & video | Timeline previews, waveform/thumbnail scrubbing, start/end trim handles, selection looping, native conversion, video compression, audio extraction, and short GIFs |
+| PDFs & documents | Merge, reorder/extract/rotate/split pages, scanned-page OCR, text extraction, image-based compression, and PDF creation |
+| File management | Screenshot-aware organization, rename previews with Undo, ZIP creation/extraction, exact duplicate review, and explicit Copy/Move destinations |
+| Meetings | Microphone/system/both audio capture, source selection and meters, pause/resume, five-second checkpoints, and interrupted-recording recovery |
+| Transcripts | Local Whisper models, live drafts, saved meeting search, editable timestamped transcripts, playback seeking, and TXT/Markdown/SRT/VTT export |
+| Codex | Pending questions and permission requests, selectable/custom answers, direct Send answer, Allow once/Decline, diff review, and automatic dismissal after confirmation |
+| Automation & AI | Reusable action chains, configured macOS Shortcuts, and optional local Ollama summaries for meetings and extracted text |
+| Safety & settings | New-file transformations, staged outputs, cancellation/retry, move recovery, collision protection, permission controls, and Keychain-backed cloud credentials |
+
+[Build and run](#build-and-run) · [File tools](#notch-shelf-and-file-actions) · [Codex](#codex-in-the-notch) · [Meetings](#meetings-and-local-transcripts) · [Privacy](#privacy-and-grouping) · [Verification](docs/Verification.md)
 
 ## Build and run
 
 Requires macOS 14 or later, Xcode with Swift 6, Git, and Python 3. The first build fetches pinned ZIPFoundation, whisper.cpp, and libwebp sources. If CMake is absent, it installs a pinned copy in `.build/native/tooling`; it does not change your system Python or require Homebrew. Native engines are bundled in the app.
 
 ```sh
+git clone https://github.com/sreeragh-s/betternotch.git
+cd betternotch
 ./scripts/build.sh
-open build/SortMyMac.app
+open build/BetterNotch.app
 swift test
 ```
 
-The build script produces an ad hoc signed local app with its own generated icon. Distribution outside this Mac requires your Developer ID signing and notarization. The app uses the bundle identifier `com.sortmymac.native` so it can coexist with other installed builds.
+The build script produces an ad hoc signed local app with its own generated icon and the bundle identifier `com.betternotch.native`. Distribution outside this Mac requires Developer ID signing and notarization. A packaged installer is not currently provided.
+
+File tools and recording work without a cloud account. Transcription needs a one-time speech-model download. Cloudflare topic grouping and optional Ollama summaries have separate setup below.
+
+### Upgrading an existing installation
+
+BetterNotch imports existing app settings once, keeps existing saved-library and recovery paths valid, and can read the previous Keychain token. Existing trusted Codex hooks remain recognized; the rename does not edit your hook configuration. New installations use the BetterNotch data directory and hook names. Run one version at a time when sharing an existing library. macOS may require granting microphone and screen/system-audio access to the renamed app in **Settings → Permissions**.
 
 ## Notch, shelf, and file actions
 
@@ -40,10 +68,10 @@ In **Settings → Codex**, install the hooks, then review and trust them with `/
 - Desktop questions use a read-only adapter for newly appended local session records. Existing conversations and reasoning are not imported; files are opened without write access. The preview adapter can be disabled separately in Settings. Both session records and the desktop coordination protocol are version-specific and may change; incompatible formats fail without sending.
 - Supported desktop questions offer choices, a custom answer, and **Send answer**. The app checks the live chat/question through Codex's local coordination socket, sends a structured reply only after your click, and clears the prompt after Codex records it. Private or unsupported requests use Open in Codex. An unconfirmed send is never automatically retried. Session records can never grant executable permissions.
 
-Pending prompts and drafts stay in memory only. No authentication files are read and nothing is sent to Cloudflare. The hook mailbox uses private same-user files under `Application Support/SortMyMac/CodexInbox`; consumed files are removed. See the [official Codex hook contract](https://learn.chatgpt.com/docs/hooks).
+Pending prompts and drafts stay in memory only. No authentication files are read and nothing is sent to Cloudflare. The hook mailbox uses private same-user files in the active library's `CodexInbox/` directory; consumed files are removed. See the [official Codex hook contract](https://learn.chatgpt.com/docs/hooks).
 
 ```sh
-python3 scripts/verify-codex-bridge.py build/SortMyMac.app/Contents/MacOS/SortMyMacCodexBridge
+python3 scripts/verify-codex-bridge.py build/BetterNotch.app/Contents/MacOS/BetterNotchCodexBridge
 ./scripts/verify-hub.sh --smoke-route codex-question
 ```
 
@@ -59,9 +87,9 @@ Other isolated routes: `codex`, `codex-approval`, and `codex-diff`.
 
 Audio chunks and a manifest are checkpointed approximately every five seconds. An interrupted session recovers completed chunks; an unfinished chunk can be missing. Use **Recover playable audio** in the meeting menu if final assembly was interrupted. Recordings never restart automatically.
 
-For optional summaries, run Ollama yourself and configure its localhost endpoint and an installed model in **Settings → Local AI**. Choose **Generate local summary** on a meeting. Summaries and inferred action items remain separate from editable transcript text. SortMyMac never sends meeting recordings/transcripts to Cloudflare.
+For optional summaries, run Ollama yourself and configure its localhost endpoint and an installed model in **Settings → Local AI**. Choose **Generate local summary** on a meeting. Summaries and inferred action items remain separate from editable transcript text. BetterNotch never sends meeting recordings/transcripts to Cloudflare.
 
-The SQLite library is at `~/Library/Application Support/SortMyMac/library.sqlite`. `Meetings/` holds recording chunks/manifests/audio, `Outputs/` holds kept results, `Models/` holds speech models, and `Staging/` holds incomplete transformations; `Cache/Previews/` holds disposable previews and is cleared on restart. Keep these alongside the existing `moves.json` recovery journal. Back up this folder to preserve your library. Saved recordings/results are retained until you remove them.
+New installations store the SQLite library at `~/Library/Application Support/BetterNotch/library.sqlite`; upgrades continue using their existing library directory to preserve saved absolute file references. `Meetings/` holds recording chunks/manifests/audio, `Outputs/` holds kept results, `Models/` holds speech models, and `Staging/` holds incomplete transformations; `Cache/Previews/` holds disposable previews and is cleared on restart. Keep these alongside the existing `moves.json` recovery journal. Back up this folder to preserve your library. Saved recordings/results are retained until you remove them.
 
 ## Connect Cloudflare
 
@@ -90,7 +118,7 @@ After local screenshot grouping, Clef scores pairwise topic relationships throug
 
 ## Moves, recovery, and Undo
 
-A persistent journal records file identity, source and destination paths, SHA-256 fingerprints, and transfer checkpoints. It lives at `~/Library/Application Support/SortMyMac/moves.json`; it contains metadata, not file contents or credentials. Do not remove this history while moves need recovery.
+A persistent journal records file identity, source and destination paths, SHA-256 fingerprints, and transfer checkpoints. It lives at `moves.json` in the active library directory; it contains metadata, not file contents or credentials. Do not remove this history while moves need recovery.
 
 - Canceled outgoing drags leave source files untouched. Native file promises supply the final destination URL after an accepted drop.
 - Same-volume moves use coordinated filesystem moves. Cross-volume transfers verify the copied bytes and unchanged source before source removal. Source removal checks identity and contents again inside file coordination.
@@ -100,11 +128,20 @@ A persistent journal records file identity, source and destination paths, SHA-25
 
 Quit is blocked while a move or recording is active. If macOS or the process is interrupted, reopen Recovery. Network errors and canceled analysis do not move files.
 
+## Current limits
+
+- Organization accepts up to 50 files per session. Other tools validate their supported input types separately.
+- Media trim keeps one contiguous interval per file. GIF creation is limited to 20 seconds; codec support follows the native macOS exporters.
+- Meetings start manually. Calendar integration, meeting bots, automatic recording, and identification of individual speakers are not included.
+- Speech models require an initial download. Ollama is optional and must be installed and configured separately.
+- Office-document conversion requires a configured macOS Shortcut. Ordinary PDF page operations and image-based compression have different preservation behavior, described above.
+- Codex integration depends on compatible local hooks and desktop session/coordination formats. Private or unsupported questions hand off to Codex; uncertain sends are never retried automatically.
+
 ## Development verification
 
 ```sh
 ./scripts/build.sh debug
-open -n build/SortMyMac.app --args --smoke-test "/tmp/SortMyMac-QA-$(uuidgen)"
+open -n build/BetterNotch.app --args --smoke-test "/tmp/BetterNotch-QA-$(uuidgen)"
 ```
 
 Debug-only smoke mode creates disposable text, image, PDF, audio, and transcript fixtures with isolated library/recovery history under a fresh temporary directory. It supplies deterministic test grouping without contacting Cloudflare and keeps the panel open for UI automation. Release builds contain no fixture service. Use its `destination/` folder to test export, cancel, and Undo.

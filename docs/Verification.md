@@ -10,7 +10,7 @@ The Codex inbox, selectable questions, persistent answer drafts, setup page, and
 
 Codex coverage includes expiring and thread-bound approvals, option/description parsing for both question shapes, patch bounds, unrelated-tool filtering, private mailbox symlink rejection, idempotent hook installation/removal, preserved unrelated handlers and backups, malformed configuration protection, bounded inbox history, duplicate events, and helper acknowledgements. The packaged helper fixture script verifies Allow/Decline/handoff/disconnect, wrong-thread rejection, and multi-read bounded input without launching an agent or changing real Codex configuration. Live trusted-hook delivery still requires a compatible Codex client and the user’s trust review.
 
-The current utility build passes 103 tests (84 core and 19 native-app tests). Crop checks cover drawing in both directions, moving without resizing, edge/corner limits, ratio locks, letterboxed coordinates, rotation round trips, and real PNG exports of asymmetric colored fixtures at all four rotations. Preview/export rounding uses integer pixel edges. Permission tests verify passive status reads, denied-microphone recovery, explicit requests, and refreshed/revoked grants using injected APIs without changing real permissions.
+The current utility build passes 106 tests (87 core and 19 native-app tests). Branding-upgrade tests cover storage selection, preserving existing references, one-time preference import without overwriting new choices, and recognition/replacement of legacy hook handlers. Crop checks cover drawing in both directions, moving without resizing, edge/corner limits, ratio locks, letterboxed coordinates, rotation round trips, and real PNG exports of asymmetric colored fixtures at all four rotations. Preview/export rounding uses integer pixel edges. Permission tests verify passive status reads, denied-microphone recovery, explicit requests, and refreshed/revoked grants using injected APIs without changing real permissions.
 
 Existing organization and native-app regression coverage includes:
 
@@ -28,6 +28,8 @@ Existing organization and native-app regression coverage includes:
 The copy-before-delete tests force the cross-volume branch using real temporary files. A physical removable drive is still useful for release acceptance.
 
 ## UI checks performed
+
+The BetterNotch release was rebuilt with renamed Swift targets, executables, bundle identity, menus, and scripts. Its signature and property list passed verification, all 106 tests passed, and the packaged hook fixture passed. The running app's Home header and menu show BetterNotch; its existing meeting and shelf records remained available through the upgrade compatibility path. Existing hook configuration was not edited. Microphone/system-audio permissions for the new bundle identity require a device acceptance check before recording.
 
 On 25 October 2026, a real question was sent to the running release app. The user selected an option and clicked Send answer in the notch; the structured question reply arrived in the originating Codex chat, and the user confirmed that the notch closed. This verifies live desktop question submission and dismissal separately from the isolated UI fixture. Live executable-permission acceptance remains a separate check.
 
@@ -68,7 +70,7 @@ During account setup, the live Clef connection diagnostic subsequently passed. T
 5. Change display scaling, attach a monitor, switch Spaces, enter fullscreen, enable Reduce Motion, and exercise VoiceOver and keyboard destination selection. Switch macOS appearance and accent colors while the app is open; include yellow and graphite accents.
 6. Interrupt a disposable transfer, reopen Recovery, and verify recovery preserves conflicts rather than overwriting user data.
 
-The release build is ad hoc signed for local use. No Git remote, hosted backend, distribution signing, or notarization is configured.
+The release build is ad hoc signed for local use. Source is maintained at `sreeragh-s/betternotch` on GitHub. No hosted backend, distribution signing, or notarization is configured.
 
 ## Full-card drag and black-notch regression — 25 October 2026
 
