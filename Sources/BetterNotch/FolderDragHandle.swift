@@ -29,9 +29,9 @@ struct FolderDragHandle: NSViewRepresentable {
         view.passthroughRects = passthroughRects
         view.cornerRadius = cornerRadius
         view.tracksCardMouseEvents = tracksCardMouseEvents
-        view.toolTip = label + ". Or click to choose a destination."
+        view.toolTip = label + ". Drop anywhere in Finder to move these files. Undo returns them to their original locations."
         view.setAccessibilityLabel(label)
-        view.setAccessibilityHelp("Drag into a Finder folder or onto the Desktop to move the original files. You can undo the move in Recovery.")
+        view.setAccessibilityHelp("Move the staged folders to any Finder location. Undo returns all files to their original locations.")
     }
     static func dismantleNSView(_ view: FolderDragView, coordinator: ()) {
         view.stopMonitoringMouseEvents()
@@ -133,7 +133,7 @@ final class FolderDragView: NSView, NSDraggingSource {
         session.draggingFormation = .pile
         session.animatesToStartingPositionsOnCancelOrFail = true
     }
-    func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation { .copy }
+    func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation { [.move, .copy] }
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         model?.exportDragEnded(accepted: !operation.isEmpty)
         model?.activeDragSource = nil
@@ -164,11 +164,15 @@ final class FolderPromise: NSObject, NSFilePromiseProviderDelegate, Sendable {
                              completionHandler: @escaping @Sendable ((any Error)?) -> Void) {
         Task {
             guard await started(group.id) else {
-                completionHandler(SortError.message("This drag session is no longer active. No originals were moved."))
+                completionHandler(SortError.message("This drag session is no longer active. Staged files were preserved."))
                 return
             }
+            // Finder's receiver is already waiting for this promised URL. Requesting a
+            // destination write claim here can wait on that same receiver indefinitely.
+            // Write directly (as Apple's file-promise sample does); the transfer engine
+            // still coordinates private sources and journals every destructive step.
             do {
-                let record = try await coordinator.fulfill(group, at: url)
+                let record = try await coordinator.fulfillPromise(group, at: url)
                 completionHandler(nil)
                 await finished(group.id, .success(record))
             } catch {

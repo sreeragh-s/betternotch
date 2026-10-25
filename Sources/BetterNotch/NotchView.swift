@@ -67,7 +67,7 @@ struct HubShell: View {
                 if model.contentVisible {
                     VStack(spacing: HubUI.section) {
                         header
-                        if model.dropTargeted { dropTarget }
+                        if model.dropTargeted { FileDropView(model: model) }
                         else { content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top) }
                         if !hub.error.isEmpty {
                             HStack(alignment: .top) {
@@ -76,7 +76,7 @@ struct HubShell: View {
                                 Spacer(); Button { hub.error = "" } label: { Image(systemName: "xmark") }.buttonStyle(.plain).accessibilityLabel("Dismiss error")
                             }
                         }
-                        if hub.route != .recordingSetup { footer }
+                        if !model.dropTargeted && hub.route != .recordingSetup && hub.route != .organize { footer }
                     }
                     .padding(.horizontal, 32).padding(.top, model.geometry.restingSize.height + HubUI.related).padding(.bottom, HubUI.inset)
                     .transition(.opacity)
@@ -90,6 +90,8 @@ struct HubShell: View {
             .shadow(color: .black.opacity(model.expanded ? (colorScheme == .dark ? 0.45 : 0.18) : 0), radius: 12, y: 6)
             Spacer(minLength: 0)
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .coordinateSpace(name: "notchHost")
+            .onPreferenceChange(FileDropFrames.self) { model.dropFrames = $0 }
             .foregroundStyle(.primary)
             .hubControls()
             .environment(\.colorScheme, .dark)
@@ -108,6 +110,7 @@ struct HubShell: View {
                 }.buttonStyle(.plain).accessibilityLabel("Show active recording")
             }
             CircleControl(symbol: "tray.full", label: "Shelf") { hub.route = .shelf }
+            CircleControl(symbol: "folder.badge.gearshape", label: "Organize") { hub.route = .organize }
             CircleControl(symbol: "waveform", label: "Meetings") { hub.route = .meetings }
             CircleControl(symbol: "terminal", label: codex.attentionCount > 0 ? "Codex, \(codex.attentionCount) requests need attention" : "Codex") { hub.route = .codex }
                 .overlay(alignment: .topTrailing) {
@@ -127,7 +130,7 @@ struct HubShell: View {
         case .recordingSetup: RecordingSetupView(hub: hub)
         case .models: SpeechModelView(hub: hub)
         case .jobs: JobsView(hub: hub)
-        case .organize: organization
+        case .organize: OrganizationView(model: model)
         case .codex: CodexInboxView(codex: codex, hub: hub)
         case .codexDiff: CodexDiffView(codex: codex, hub: hub)
         }
@@ -139,24 +142,15 @@ struct HubShell: View {
                 GridRow {
                     HomeToolCard(title: "Record Meeting", symbol: "waveform", detail: hub.isRecording ? "Recording in progress" : "Audio & transcript", compact: !hub.error.isEmpty, palette: .coral) { hub.route = hub.isRecording ? .meetingDetail : .recordingSetup; if hub.isRecording { hub.selectedMeetingID = hub.activeMeetingID } }
                     HomeToolCard(title: "Meetings", symbol: "text.bubble.fill", detail: "Saved transcripts", count: hub.meetings.count, compact: !hub.error.isEmpty, palette: .blue) { hub.route = .meetings }
-                    HomeToolCard(title: "File Tools", symbol: "wand.and.stars", detail: "Choose files to begin", compact: !hub.error.isEmpty, palette: .orange, action: hub.chooseFiles)
+                    HomeToolCard(title: "Organize", symbol: "folder.badge.gearshape", detail: model.hasPendingOrganization ? "Files held · Undo available" : "Move, group & drop", compact: !hub.error.isEmpty, palette: .orange) { hub.route = .organize }
                 }
                 GridRow {
-                    HomeToolCard(title: "Shelf", symbol: "tray.fill", detail: "Parked files", count: hub.shelf.filter { !$0.managed }.count, compact: !hub.error.isEmpty, palette: .purple) { hub.route = .shelf }
+                    HomeToolCard(title: "Shelf", symbol: "tray.fill", detail: "Files & tools", count: hub.shelf.filter { !$0.managed }.count, compact: !hub.error.isEmpty, palette: .purple) { hub.route = .shelf }
                     HomeToolCard(title: "Recent Results", symbol: "checkmark", detail: "Ready to drag out", count: hub.shelf.filter(\.managed).count, compact: !hub.error.isEmpty, palette: .green) { hub.route = .results }
-                    HomeToolCard(title: "Activity", symbol: "list.bullet.rectangle.fill", detail: model.isBusy ? "Organizing files" : !model.groups.isEmpty ? "Review folders" : "Active jobs", count: hub.currentJobs.count, compact: !hub.error.isEmpty, palette: .slate) { hub.route = model.isBusy || !model.groups.isEmpty ? .organize : .jobs }
+                    HomeToolCard(title: "Activity", symbol: "list.bullet.rectangle.fill", detail: model.isBusy ? "Organizing files" : model.hasPendingOrganization ? "Files in Organize" : "Active jobs", count: hub.currentJobs.count, compact: !hub.error.isEmpty, palette: .slate) { hub.route = model.isBusy || model.hasPendingOrganization ? .organize : .jobs }
                 }
             }
         }
-    }
-    private var dropTarget: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "tray.and.arrow.down").font(.system(size: 36)).foregroundStyle(Color.accentColor)
-            Text("Drop to see what’s possible").font(.title3.weight(.semibold))
-            Text("Choose an action after dropping. Your originals stay in place.").font(.caption).foregroundStyle(.secondary)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])))
     }
     private var collapsed: some View {
         HStack {
@@ -177,24 +171,5 @@ struct HubShell: View {
             if hub.downloadProgress != nil { Button("Model download") { hub.route = .models } }
             if hub.route != .home && hub.route != .meetings && hub.route != .codex && hub.route != .codexDiff { Button("Home") { hub.route = .home }.keyboardShortcut("h", modifiers: .command) }
         }.font(HubUI.caption).foregroundStyle(.secondary)
-    }
-    private var organization: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(model.phase == .analyzing ? "Finding what belongs together." : "A place for everything.").font(.title3.weight(.semibold))
-            GroupingReviewView(model: model)
-            Text(model.status).font(.caption).foregroundStyle(.secondary)
-            if let warning = model.warnings.first { Text(warning).font(.caption).foregroundStyle(.orange) }
-            HStack {
-                if model.phase == .analyzing { ProgressView().controlSize(.small); Button("Cancel", action: model.cancelOrganization) }
-                if model.phase == .grouped || model.phase == .exporting {
-                    Label("Drag All Folders", systemImage: "hand.draw.fill").font(.caption.weight(.semibold)).padding(10).background(Color.accentColor.opacity(0.15), in: Capsule())
-                        .overlay { FolderDragHandle(groups: model.groups, model: model, label: "Drag all folders to Finder") }
-                }
-                if model.phase == .completed { Button("Undo move", action: model.showRecovery) }
-                if model.phase == .failed { Button("Retry", action: model.organize); Button("Recovery", action: model.showRecovery) }
-                Spacer()
-                if !model.isBusy { Button("Start over") { model.clear(); hub.route = .home } }
-            }
-        }
     }
 }

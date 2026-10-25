@@ -10,6 +10,7 @@ struct BetterNotchApp: App {
         MenuBarExtra {
             Button("Open BetterNotch") { model.showNotch() }.keyboardShortcut("o")
             Button("Add files…") { model.hub.chooseFiles() }.keyboardShortcut("a")
+            Button("Organize files…", action: model.chooseFiles)
             Button(model.hub.isRecording ? "Show active meeting" : "Record meeting…") {
                 model.hub.selectedMeetingID = model.hub.activeMeetingID
                 model.hub.route = model.hub.isRecording ? .meetingDetail : .recordingSetup
@@ -61,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         let model = AppModel.shared
-        if model.phase == .exporting || model.hub.isRecording || model.hub.recordingBusy {
+        if model.phase == .receiving || model.phase == .exporting || model.hub.isRecording || model.hub.recordingBusy {
             model.status = "Stop and save the recording or finish the current move before quitting."
             model.hub.error = model.status
             model.showNotch()

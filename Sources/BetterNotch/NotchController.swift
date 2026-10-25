@@ -14,8 +14,11 @@ final class NotchPanel: NSPanel {
 
 @MainActor
 final class NotchHostingView<Content: View>: NSHostingView<Content> {
-    var receiveFiles: (([URL]) -> Bool)?
-    var targeting: ((Bool) -> Bool)?
+    var receiveFiles: (([URL], FileDropDestination) -> Bool)?
+    var dragEntered: ((Int) -> Void)?
+    var hoverDestination: ((CGPoint) -> FileDropDestination?)?
+    var dragFinished: ((Bool) -> Void)?
+    private var validFileDrag = false
 
     required init(rootView: Content) {
         super.init(rootView: rootView)
@@ -24,18 +27,40 @@ final class NotchHostingView<Content: View>: NSHostingView<Content> {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("Use init(rootView:)") }
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        guard sender.draggingPasteboard.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]),
-              targeting?(true) == true else { return [] }
+        // Local shelf/organized-folder drags must remain outgoing drags.
+        guard sender.draggingSource == nil else { return [] }
+        let urls = fileURLs(sender)
+        guard !urls.isEmpty else { return [] }
+        validFileDrag = true
+        dragEntered?(urls.count)
+        _ = destination(sender)
         return .copy
     }
     override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        targeting?(true) == true ? .copy : []
+        validFileDrag && destination(sender) != nil ? .copy : []
     }
-    override func draggingExited(_ sender: (any NSDraggingInfo)?) { _ = targeting?(false) }
+    override func wantsPeriodicDraggingUpdates() -> Bool { true }
+    override func draggingExited(_ sender: (any NSDraggingInfo)?) { finishDrag(accepted: false) }
+    override func draggingEnded(_ sender: any NSDraggingInfo) { finishDrag(accepted: false) }
+    override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool { validFileDrag && destination(sender) != nil }
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        _ = targeting?(false)
-        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
-        return !urls.isEmpty && receiveFiles?(urls) == true
+        guard validFileDrag, let choice = destination(sender) else { finishDrag(accepted: false); return false }
+        let urls = fileURLs(sender)
+        let accepted = !urls.isEmpty && receiveFiles?(urls, choice) == true
+        finishDrag(accepted: accepted)
+        return accepted
+    }
+    private func fileURLs(_ sender: any NSDraggingInfo) -> [URL] {
+        sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+    }
+    private func destination(_ sender: any NSDraggingInfo) -> FileDropDestination? {
+        let local = convert(sender.draggingLocation, from: nil)
+        return hoverDestination?(CGPoint(x: local.x, y: isFlipped ? local.y : bounds.height - local.y))
+    }
+    private func finishDrag(accepted: Bool) {
+        guard validFileDrag else { return }
+        validFileDrag = false
+        dragFinished?(accepted)
     }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -47,6 +72,9 @@ final class NotchHostingView<Content: View>: NSHostingView<Content> {
 
 @MainActor
 final class NotchController {
+    #if DEBUG
+    private var nativePromiseTestWindow: NSWindow?
+    #endif
     private let model: AppModel
     private let panel: NotchPanel
     private var monitors: [Any] = []
@@ -55,6 +83,7 @@ final class NotchController {
     private var opening: DispatchWorkItem?
     private var closing: DispatchWorkItem?
     private var reveal: DispatchWorkItem?
+    private var expandedBeforeDrag: Bool?
     private var geometry: NotchGeometry { model.geometry }
 
     init(model: AppModel) {
@@ -74,16 +103,33 @@ final class NotchController {
         panel.animationBehavior = .none
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         let host = NotchHostingView(rootView: NotchView(model: model))
-        host.receiveFiles = { [weak self, weak model] urls in
+        host.receiveFiles = { [weak self, weak model] urls, destination in
             guard let self, let model else { return false }
-            model.hub.receive(urls); self.expand(immediate: true); return true
+            model.dropTargeted = false
+            let accepted = model.acceptDrop(urls, to: destination)
+            if accepted { self.expand(immediate: true) }
+            return accepted
         }
-        host.targeting = { [weak self, weak model] targeted in
-            guard let model else { return false }
-            model.dropTargeted = targeted
-            self?.resizeForContent()
-            if targeted { self?.expand(immediate: true) }
-            return true
+        host.dragEntered = { [weak self, weak model] count in
+            guard let self, let model else { return }
+            self.expandedBeforeDrag = self.expandedBeforeDrag ?? model.expanded
+            model.dragFileCount = count; model.dropChoice = nil; model.dropTargeted = true
+            self.resizeForContent()
+            self.expand(immediate: true)
+        }
+        host.hoverDestination = { [weak model] point in
+            guard let model else { return nil }
+            let choice = model.dropDestination(at: point)
+            if model.dropChoice != choice { model.dropChoice = choice }
+            return choice
+        }
+        host.dragFinished = { [weak self, weak model] accepted in
+            guard let self, let model else { return }
+            let restoreCollapsed = self.expandedBeforeDrag == false
+            self.expandedBeforeDrag = nil
+            model.dropTargeted = false; model.dropChoice = nil; model.dragFileCount = 0
+            self.resizeForContent()
+            if !accepted && restoreCollapsed { self.collapse(force: true) }
         }
         panel.contentView = host
         panel.dismiss = { [weak self] in
@@ -143,6 +189,7 @@ final class NotchController {
 
     private func track(_ event: NSEvent) {
         let point = NSEvent.mouseLocation
+        if event.type == .mouseMoved && !model.dropTargeted { expandedBeforeDrag = nil }
         if model.expanded {
             let body = CGRect(x: geometry.screen.midX - geometry.expandedSize.width / 2,
                               y: geometry.screen.maxY - geometry.expandedSize.height,
@@ -157,6 +204,7 @@ final class NotchController {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.65, execute: work)
             }
         } else if geometry.activationFrame.contains(point) {
+            if event.type == .leftMouseDragged && expandedBeforeDrag == nil { expandedBeforeDrag = false }
             expand(immediate: event.type == .leftMouseDragged)
         } else { opening?.cancel(); opening = nil }
     }
@@ -195,6 +243,20 @@ final class NotchController {
     }
 
     func focusForEditing() { panel.makeKey() }
+
+    #if DEBUG
+    func showNativePromiseTest(destination: URL) {
+        model.expanded = true; model.contentVisible = true
+        panel.orderOut(nil)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 676, height: 458), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Disposable move test"
+        window.contentView = NSHostingView(rootView: NativePromiseTestView(model: model, destination: destination))
+        window.center()
+        nativePromiseTestWindow = window
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+    #endif
 
     func collapse(force: Bool = false) {
         opening?.cancel(); opening = nil

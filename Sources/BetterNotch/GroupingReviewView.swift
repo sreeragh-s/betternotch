@@ -63,12 +63,12 @@ struct GroupingReviewView: View {
                     VStack(spacing: 10) {
                         Image(systemName: "sparkle.magnifyingglass").font(.system(size: 25)).foregroundStyle(Color.accentColor)
                         Text("Looking for what belongs together").font(.system(size: 12, weight: .medium))
-                        Text("Your originals are still right where you left them.").font(.system(size: 10)).foregroundStyle(.secondary)
+                        Text("Your files are held in Organize. Undo returns them to their original folders.").font(.system(size: 10)).foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity).padding(.vertical, 18)
                 }
             }.padding(2)
         }
-        .frame(height: 178)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.5, dampingFraction: 0.8), value: model.groups)
         .accessibilityLabel(model.phase == .analyzing ? "Grouping files" : "Organized folders")
     }

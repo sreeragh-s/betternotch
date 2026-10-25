@@ -121,10 +121,9 @@ final class HubModel: ObservableObject {
                 persistMeeting(meetings[index])
             }
             for model in SpeechModel.choices { if await speechModels.installed(model.id) != nil { installedModels.insert(model.id) } }
-            // Reconcile references added before the asynchronous library load completed.
-            if !owner.files.isEmpty { add(owner.files.map(\.url)) }
         } catch { self.error = error.localizedDescription }
         loading = false
+        await owner.configureOrganizationStorage(root: self.root)
         let pending = pendingAdds; pendingAdds = []
         for (url, managed) in pending { add([url], managed: managed) }
         if route == .fileActions { actionItems = selection }
@@ -175,10 +174,10 @@ final class HubModel: ObservableObject {
             } catch { self.error = error.localizedDescription }
         }
     }
-    func receive(_ urls: [URL]) { selection = []; add(urls); actionItems = selection; route = .fileActions }
+    func receive(_ urls: [URL]) { selection = []; add(urls); actionItems = selection; route = .shelf }
     func chooseFiles() {
         owner?.notch?.focusForEditing()
-        let panel = NSOpenPanel(); panel.allowsMultipleSelection = true; panel.canChooseDirectories = false; panel.message = "Choose files for the shelf. Organize supports up to 50 at a time."
+        let panel = NSOpenPanel(); panel.allowsMultipleSelection = true; panel.canChooseDirectories = false; panel.message = "Choose files to keep on the shelf and use with file tools."
         panel.begin { [weak self] result in if result == .OK { self?.receive(panel.urls) } }
     }
     func removeShelf(_ item: ShelfItem) { shelf.removeAll { $0.id == item.id }; selection.remove(item.id); removeStored("shelf", item.id) }
@@ -195,9 +194,8 @@ final class HubModel: ObservableObject {
     func open(_ definition: FileActionDefinition) {
         error = ""
         if definition.kind == .organize {
-            guard definition.inputs.count <= FileIntake.limit else { error = "Organize accepts up to 50 files. Select a smaller batch; all files remain on the shelf."; return }
-            guard let owner, !owner.isBusy else { error = "Finish the current organization first."; return }
-            owner.clear(); owner.receive(definition.inputs.map(\.url)); route = .organize; owner.organize(); return
+            error = "Use the separate Organize drop target or Home → Organize."
+            return
         }
         actionItems = Set(definition.inputs.map(\.id))
         pendingPreset = nil

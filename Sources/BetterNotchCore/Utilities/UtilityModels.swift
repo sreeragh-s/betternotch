@@ -59,7 +59,7 @@ public struct FileActionDefinition: Identifiable, Sendable {
         if !textInputs.isEmpty { entries += [(.extractText, textInputs), (.summarize, textInputs)] }
         if !videos.isEmpty { entries += [(.compressVideo, videos), (.extractAudio, videos), (.makeGIF, videos)] }
         if !documents.isEmpty { entries.append((.makePDF, documents)) }
-        entries += [(.organize, files), (.rename, files), (.zip, files)]
+        entries += [(.rename, files), (.zip, files)]
         let zips = files.filter { $0.url.pathExtension.lowercased() == "zip" }
         if !zips.isEmpty { entries.append((.unzip, zips)) }
         if files.count > 1 { entries.append((.duplicates, files)) }

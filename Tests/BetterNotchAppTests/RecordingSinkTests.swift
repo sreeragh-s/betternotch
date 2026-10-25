@@ -37,7 +37,7 @@ import BetterNotchCore
     let model = AppModel()
     await model.hub.start(owner: model, root: root.appendingPathComponent("library"))
     model.hub.receive([url])
-    #expect(model.hub.route == .fileActions)
+    #expect(model.hub.route == .shelf)
     #expect(model.phase == .idle)
     #expect(model.hub.selectedFiles.first?.id == model.hub.shelf.first?.file.id)
     model.hub.route = .home

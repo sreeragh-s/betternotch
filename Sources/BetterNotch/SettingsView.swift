@@ -72,7 +72,7 @@ struct SettingsView: View {
                     step("2", "Preview before keeping", "Resize images, trim clips, edit PDFs, and organize files. Transformations create new outputs.")
                     step("3", "Keep your meetings", "Record microphone and system audio, then transcribe locally with a downloaded speech model.")
                 }
-                Text("Screenshots are grouped locally. When you organize other files, filenames, metadata, limited document text, and small image previews are sent to Cloudflare using your account. Originals stay in place until you drop the folders into Finder.")
+                Text("Organize temporarily moves files out of their source folders; Undo returns them. Screenshots group locally. For other files, filenames, metadata, limited document text, and small image previews are sent to Cloudflare using your account. The regular Shelf holds references only.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack {
                     Button("Connect Cloudflare") { model.settingsPage = "Cloudflare" }.buttonStyle(.borderedProminent)

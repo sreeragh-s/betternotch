@@ -118,6 +118,19 @@ extension SmokeTestSupport {
         let routeIndex = arguments.firstIndex(of: "--smoke-route")
         let route = routeIndex.flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil } ?? "files"
         switch route {
+        case "native-promise":
+            model.receiveForOrganization(model.files.map(\.url))
+            await model.organizationStageTask?.value
+            await model.organizationTask?.value
+            model.notch?.showNativePromiseTest(destination: root.appendingPathComponent("destination"))
+        case "empty-organize": model.clear(); hub.route = .organize
+        case "organize-completed":
+            model.clear(); model.phase = .completed; model.exportMovedCount = 2; model.exportCopiedCount = 2; hub.route = .organize
+        case "drop", "drop-organize":
+            hub.route = .home; model.dragFileCount = 4; model.dropTargeted = true
+            model.dropChoice = route == "drop-organize" ? .organize : nil
+        case "organize":
+            model.receiveForOrganization(model.files.map(\.url))
         case "codex", "codex-question", "codex-diff", "codex-approval":
             let codex = hub.codex
             codex.setEnabled(true)

@@ -46,6 +46,7 @@ private func utilityAudio(_ url: URL, seconds: Double = 3) throws {
     #expect(actions.first { $0.kind == .resize }?.inputs.count == 1)
     #expect(actions.first { $0.kind == .zip }?.inputs.count == 3)
     #expect(!actions.contains { $0.kind == .trim })
+    #expect(!actions.contains { $0.kind == .organize })
 }
 @Test func utilityImagePreviewPreservesOriginalAndPublishesValidatedDimensions() async throws {
     let root = try temporaryDirectory(); defer { try? FileManager.default.removeItem(at: root) }
