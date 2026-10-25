@@ -13,6 +13,10 @@ struct ShelfView: View {
                 Text(hub.route == .results ? "Recent results" : hub.route == .fileActions ? "What would you like to do?" : "Your shelf").font(HubUI.title)
                 Spacer(); Button("Add files…", action: hub.chooseFiles)
             }
+            if !items.isEmpty {
+                Text("Drag files to a folder or app to copy. Select several to drag them together.")
+                    .font(HubUI.caption).foregroundStyle(.secondary)
+            }
             if items.isEmpty {
                 ContentUnavailableView("Your shelf is empty", systemImage: "tray", description: Text("Choose files or drag them toward the notch.")).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -47,9 +51,10 @@ struct ShelfView: View {
     }
     private func fileTile(_ item: ShelfItem) -> some View {
         let url = item.resolvedURL()
-        return Button {
+        let toggleSelection = {
             if hub.selection.contains(item.id) { hub.selection.remove(item.id) } else { hub.selection.insert(item.id) }
-        } label: {
+        }
+        return Button(action: toggleSelection) {
             VStack(spacing: 5) {
                 Image(nsImage: NSWorkspace.shared.icon(forFile: (url ?? item.file.url).path)).resizable().frame(width: 34, height: 34)
                 Text(item.file.name).font(HubUI.caption.weight(.medium)).lineLimit(1)
@@ -58,9 +63,15 @@ struct ShelfView: View {
                 .background(hub.selection.contains(item.id) ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: HubUI.radius))
                 .overlay(RoundedRectangle(cornerRadius: HubUI.radius).strokeBorder(hub.selection.contains(item.id) ? Color.accentColor : Color.primary.opacity(0.09), lineWidth: hub.selection.contains(item.id) ? 2 : 1))
                 .overlay(alignment: .topTrailing) { if hub.selection.contains(item.id) { Image(systemName: "checkmark.circle.fill").symbolRenderingMode(.palette).foregroundStyle(.white, Color.accentColor).font(.system(size: 15)).padding(6).accessibilityHidden(true) } }
-        }.buttonStyle(.plain).help(item.file.url.path)
+        }.buttonStyle(.plain)
+            .overlay {
+                ShelfDragHandle(owner: hub.owner, urls: {
+                    do { return try ShelfDragFiles.resolve(item, in: items, selection: hub.selection) }
+                    catch { hub.error = error.localizedDescription; return [] }
+                }, clicked: toggleSelection)
+            }
+            .help("Drag to copy into a folder or app. " + (url ?? item.file.url).path)
             .accessibilityLabel(item.file.name).accessibilityValue(hub.selection.contains(item.id) ? "Selected" : "Not selected")
-            .onDrag { url.map { NSItemProvider(contentsOf: $0) ?? NSItemProvider() } ?? NSItemProvider() }
             .contextMenu {
                 if let url {
                     Button("Preview") { QuickLookController.shared.show(url) }
