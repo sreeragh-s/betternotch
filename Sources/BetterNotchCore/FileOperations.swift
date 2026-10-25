@@ -19,8 +19,15 @@ public protocol FileOperations: Sendable {
     func sameVolume(_ source: URL, _ destinationParent: URL) throws -> Bool
     func move(_ source: URL, _ destination: URL) throws
     func copy(_ source: URL, _ destination: URL) throws
+    func movePromisedFile(_ source: URL, _ destination: URL) throws
+    func copyPromisedFile(_ source: URL, _ destination: URL) throws
     func removeFile(_ url: URL, expected: FileStamp, fingerprint: String) throws
     func removeEmptyDirectory(_ url: URL) throws
+}
+
+public extension FileOperations {
+    func movePromisedFile(_ source: URL, _ destination: URL) throws { try move(source, destination) }
+    func copyPromisedFile(_ source: URL, _ destination: URL) throws { try copy(source, destination) }
 }
 
 public struct LocalFileOperations: FileOperations {
@@ -66,6 +73,29 @@ public struct LocalFileOperations: FileOperations {
                                writingItemAt: destination, options: [], error: &coordinationError) { from, to in
             do { try FileManager.default.copyItem(at: from, to: to) }
             catch { operationError = error }
+        }
+        if let error = coordinationError ?? operationError { throw error }
+    }
+    /// Finder's file-promise receiver owns destination access until completion. Taking
+    /// another destination claim can deadlock against that receiver. Coordinate only
+    /// our private source; collision reservation and the journal protect the output.
+    public func movePromisedFile(_ source: URL, _ destination: URL) throws {
+        try coordinatePromiseSource(source, moving: true) { try FileManager.default.moveItem(at: $0, to: destination) }
+    }
+    public func copyPromisedFile(_ source: URL, _ destination: URL) throws {
+        try coordinatePromiseSource(source, moving: false) { try FileManager.default.copyItem(at: $0, to: destination) }
+    }
+    private func coordinatePromiseSource(_ source: URL, moving: Bool, body: (URL) throws -> Void) throws {
+        let coordinator = NSFileCoordinator()
+        var coordinationError: NSError?, operationError: (any Error)?
+        if moving {
+            coordinator.coordinate(writingItemAt: source, options: .forMoving, error: &coordinationError) { url in
+                do { try body(url) } catch { operationError = error }
+            }
+        } else {
+            coordinator.coordinate(readingItemAt: source, options: .withoutChanges, error: &coordinationError) { url in
+                do { try body(url) } catch { operationError = error }
+            }
         }
         if let error = coordinationError ?? operationError { throw error }
     }

@@ -9,6 +9,8 @@ public enum ItemStage: String, Codable, Sendable {
     case planned, copied, moved, restoring, restoreCopied, restored
 }
 
+public enum FileTransferOperation: String, Codable, Sendable { case move, copy }
+
 public struct MoveItem: Identifiable, Codable, Sendable {
     public var id = UUID()
     public var file: FileDescriptor
@@ -17,6 +19,8 @@ public struct MoveItem: Identifiable, Codable, Sendable {
     public var originalStamp: FileStamp
     public var destinationStamp: FileStamp?
     public var restoredStamp: FileStamp?
+    /// Missing in v1 journals, whose operations always moved originals.
+    public var operation: FileTransferOperation?
     public var stage: ItemStage = .planned
     public var error: String?
 }
@@ -32,10 +36,11 @@ public struct MoveRecord: Identifiable, Codable, Sendable {
     public var items: [MoveItem] = []
     public var error: String?
     public var movedCount: Int { items.filter { $0.stage == .moved }.count }
+    public var copiedCount: Int { items.filter { $0.operation == .copy && $0.stage == .copied }.count }
 }
 
 public struct MoveJournal: Codable, Sendable {
-    public var version = 1
+    public var version = 2
     public var records: [MoveRecord] = []
     public init() {}
 }
