@@ -44,9 +44,9 @@ BetterNotch imports existing app settings once, keeps existing saved-library and
 
 ## Notch, shelf, and file actions
 
-Hover opens Home with Record Meeting, Meetings, File Tools, Shelf, Recent Results, and Activity. Dragging files temporarily replaces Home with a drop target. Canceling the drag restores the previous view. Dropping only adds references; no processing starts until you choose an action.
+Hover opens Home with Record Meeting, Meetings, Organize, Shelf, Recent Results, and Activity. Dragging files temporarily shows two distinct targets: **Shelf** parks references and opens file tools; **Organize** moves originals temporarily into its own durable staging area and starts grouping. Drop on the chosen target; hovering or canceling an incoming drag never moves files. The regular shelf remains separate.
 
-The shelf and recent results survive restarts. Right-click a file to preview, open, reveal in Finder, save a copy, copy to the clipboard, or remove its shelf reference. Missing/replaced files have Locate and Remove actions. Removing a reference never deletes the source; managed results have a separate Move to Trash command. Pin folders under Destinations for explicit Copy or Move operations.
+The shelf and recent results survive restarts. Drag any file tile into a Finder folder, onto the Desktop, or into an app that accepts files to copy it there. Select several files, then drag a selected tile to copy the visible selection together; dragging an unselected tile copies just that file. Copies keep the originals and shelf references in place. Right-click a file to preview, open, reveal in Finder, save a copy, copy to the clipboard, or remove its shelf reference. Missing/replaced files have Locate and Remove actions. Removing a reference never deletes the source; managed results have a separate Move to Trash command. Pin folders under Destinations for explicit Copy or Move operations.
 
 Settings → Permissions shows microphone and screen/system audio access, offers explicit permission requests, and opens the relevant macOS privacy panes. Files & Folders settings are linked separately. Status refreshes when you return to the app; opening this page never starts recording or requests access automatically.
 
@@ -56,7 +56,7 @@ Settings → Permissions shows microphone and screen/system audio access, offers
 - **File management:** preview batch renames and undo them in Activity; create/preview/extract ZIPs; review exact duplicates without automatic deletion.
 - **Presets:** save settings from an editor, then append transformation steps from another editor to build a chain. The chain validates every step and uses the same preview/export path. Configure a macOS Shortcut in Settings → Local AI to expose custom file actions, including Office conversions.
 
-Transformations create new files. Outputs are staged and validated before publication; expensive jobs queued during a recording wait until recording/transcription yields. Activity exposes real per-file progress, cancellation, results, retries, and interrupted jobs.
+Shelf transformations create new files. Organize explicitly moves originals into temporary managed storage and provides Undo. Transformation outputs are staged and validated before publication; expensive jobs queued during a recording wait until recording/transcription yields. Activity exposes real per-file progress, cancellation, results, retries, and interrupted jobs.
 
 ## Codex in the notch
 
@@ -101,10 +101,11 @@ Requests use your account's Workers AI access and billing. No service credential
 
 ## Organize files
 
-1. Drag local files toward the notch; the drop target appears only during a drag. Drop, select up to 50 files, then choose **Organize** under the relevant actions or **More**. **File Tools** on Home and **Add files…** also open a native picker.
-2. Select **Organize**. Screenshots go together in **Screenshots**, recognized from macOS capture metadata or standard timestamped screenshot filenames. They do not need matching subjects and are excluded from cloud analysis. Remaining files group by topic: limited excerpts are extracted locally from text, Markdown, PDF, and RTF; other images receive small previews. Other formats contribute metadata. Original files stay in place during analysis. Download cloud placeholders in Finder first. Folders, bundles, and symbolic links are excluded.
+1. Drag up to 50 local files toward the notch and drop directly on **Organize**. The files move out of their source folders into durable, private Organize storage, then grouping starts. The shelf is unchanged. **Home → Organize → Choose files…** and the menu bar's **Organize files…** are picker alternatives with the same move behavior. Invalid/over-limit batches are rejected before moving anything. A failed or canceled intake rolls completed moves back; any conflict remains listed in Recovery. **Add files…** belongs to the separate reference-only shelf flow.
+2. Screenshots go together in **Screenshots**, recognized from capture metadata or timestamped filenames. They are excluded from cloud analysis. Other files group by topic using locally extracted excerpts/previews and your Cloudflare account. Files stay in Organize while grouping; **Undo** cancels grouping and restores their original locations. Download cloud placeholders in Finder first. Folders, bundles, and symbolic links are excluded.
 3. Review the folder cards. Edit a folder's name; right-click a file icon to move it into another group or a new folder. Extra files are accessible from the card's count menu.
-4. Drag anywhere on a folder card's background, icon, file count, or previews, or use **Drag All Folders**, into a Finder folder or onto the Desktop. Folder-name fields and extra-file menus keep their normal interactions; right-click a preview for its file actions. Click the drag surface instead to use a native destination picker, including with VoiceOver. The app moves originals only when a destination is accepted. Finder controls icon placement and sorting.
+4. Drag a folder card or **Drag folders to Finder** into any Finder folder or onto the Desktop. This moves the held files to that destination, including a different disk after copy verification. Canceling the outgoing drag leaves them safely in Organize for another attempt or Undo. Click the drag surface for a native destination picker with the same behavior. Existing folders/files are numbered rather than overwritten. Folder-name fields and extra-file menus retain their normal interactions.
+5. **Undo** on the organization page returns the entire session to its original locations, including folders already moved out and files still held in Organize. It remains available after completion and after restart through **Settings → Recovery**. Changed files and occupied original paths are preserved for review. Finish or Undo the current session before moving in another batch.
 
 The menu bar also exposes Settings, Recovery, and Quit. Escape closes the panel while preserving work; use the explicit Cancel or Stop controls to stop processing or recording. Escape during a native drag cancels that drag. Hover never activates the app.
 
@@ -112,21 +113,23 @@ The entire notch surface stays pure black, collapsed or expanded, in every macOS
 
 ## Privacy and grouping
 
-For files not recognized as screenshots, choosing Organize sends filenames, types, sizes, dates, up to 1,200 characters of extracted text per file, and small image previews to [Cloudflare Clef](https://developers.cloudflare.com/workers-ai/models/clef/). Screenshot-only sessions make no classification requests. The app does not send absolute source paths. Previews are packed into bounded contact sheets with explicit cell coordinates. No data leaves the Mac merely because files were added to the tray.
+For files not recognized as screenshots, choosing Organize sends filenames, types, sizes, dates, up to 1,200 characters of extracted text per file, and small image previews to [Cloudflare Clef](https://developers.cloudflare.com/workers-ai/models/clef/). Screenshot-only sessions make no classification requests. The app does not send absolute source paths. Previews are packed into bounded contact sheets with explicit cell coordinates. Adding references to the regular Shelf never starts cloud grouping.
 
 After local screenshot grouping, Clef scores pairwise topic relationships through typed decisions, in batches of at most 64 questions and four sheets. Complete-link clustering requires every relationship between merged topic groups to score at least 0.8. Unknown or uncertain relationships do not imply a group. Folder names come from shared local keywords and remain editable; unmatched files go into **Other**. A 50-file session compares up to 1,225 relationships over 20 batches; screenshots reduce that work. Renamed captures without macOS capture metadata cannot reliably be recognized locally and follow normal topic grouping.
 
 ## Moves, recovery, and Undo
 
-A persistent journal records file identity, source and destination paths, SHA-256 fingerprints, and transfer checkpoints. It lives at `moves.json` in the active library directory; it contains metadata, not file contents or credentials. Do not remove this history while moves need recovery.
+Organize stores session manifests in `Organization/Sessions/`, held originals in `Organization/Items/`, and a transfer journal at `Organization/transfers.json` in the active library directory. These are durable user data, outside disposable preview caches. Do not remove them while files are staged or Undo is needed. Legacy and explicit shelf moves keep their history in `moves.json`.
 
-- Canceled outgoing drags leave source files untouched. Native file promises supply the final destination URL after an accepted drop.
+- Canceled incoming drags leave sources untouched. Canceled outgoing drags leave held files in Organize. Native file promises supply the accepted destination URL.
 - Same-volume moves use coordinated filesystem moves. Cross-volume transfers verify the copied bytes and unchanged source before source removal. Source removal checks identity and contents again inside file coordination.
 - Files are never overwritten. Duplicate basenames receive numbered suffixes. The destination picker numbers existing folder names; native receivers provide their final collision-resolved folder URL. An unexpected existing promise destination is rejected safely.
-- **Recovery & Undo…** lists completed and interrupted operations. Undo restores each file to its original path when safe, including after a restart. Partial operations can be undone independently.
+- **Recovery & Undo…** lists organization sessions and earlier move/copy history. Organization Undo reverses outbound moves first, then restores staged originals, including across volumes and after a restart. Earlier copy records retain their copy-specific Undo behavior.
 - Changed or replaced destinations, occupied original paths, missing parent folders, and ambiguous crash states are preserved for review. Resolve the listed conflict, then retry Undo. Empty destination folders are removed with `rmdir`; folders containing user-added items are kept.
 
-Quit is blocked while a move or recording is active. If macOS or the process is interrupted, reopen Recovery. Network errors and canceled analysis do not move files.
+Quit is blocked during file intake, a move, or recording. Quitting with files parked in Organize is safe: the session reappears after restart, with Undo available. Interrupted transfers are marked for review. A grouping/network error retains staged files for Retry or Undo.
+
+Transfer journals write version 2, and organization manifests use version 1. Existing version-1 move history remains readable; older app builds cannot read version-2 transfer history. Shelf destination actions explicitly labeled Move continue to move originals regardless of location.
 
 ## Current limits
 
@@ -154,6 +157,9 @@ For an isolated app identity that coexists with installed builds:
 ./scripts/verify-hub.sh --smoke-route home
 # Other routes: crop, images, media, pdf, meetings, models
 # Setup/library routes: recording, meeting-list, empty-meetings, permissions, home-error
+# Drag/organization routes: drop, drop-organize, organize
+# Organization layout states: empty-organize, organize-completed
+# Native promise acceptance fixture: native-promise (disposable sources and destination)
 ```
 
 Native engine integration can be checked with `python3 scripts/verify-native.py` after placing the verified Base model in `.build/qa-models/ggml-base.bin`. This check uses upstream's public JFK sample and never opens the microphone.
